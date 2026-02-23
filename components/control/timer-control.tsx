@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { MatchState } from "@/lib/types"
-import { Play, Pause, Megaphone } from "lucide-react"
+import { Play, Pause, Megaphone, Pencil, Check, X, Plus, Minus } from "lucide-react"
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -16,6 +17,7 @@ interface TimerControlProps {
   onStop: () => void
   onResume: () => void
   onSetBreak: (seconds: number) => void
+  onSetGameTimer: (seconds: number) => void
   onCampoActivo: () => void
   hasPendingDecision: boolean
 }
@@ -26,9 +28,14 @@ export function TimerControl({
   onStop,
   onResume,
   onSetBreak,
+  onSetGameTimer,
   onCampoActivo,
   hasPendingDecision,
 }: TimerControlProps) {
+  const [editingGameTime, setEditingGameTime] = useState(false)
+  const [editMinutes, setEditMinutes] = useState(0)
+  const [editSeconds, setEditSeconds] = useState(0)
+
   if (!match) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card p-8">
@@ -42,6 +49,7 @@ export function TimerControl({
   const isIdle = match.timerMode === "IDLE"
   const isBreak = match.timerMode === "BREAK"
   const isGame = match.timerMode === "GAME"
+  const canEditGameTime = isIdle || isPaused
 
   const breakColor = isBreak ? "text-timer-break" : "text-muted-foreground"
   const gameColor = isGame ? "text-timer-game" : "text-muted-foreground"
@@ -68,9 +76,104 @@ export function TimerControl({
       {/* Game Timer */}
       <div className="flex flex-col items-center">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Juego</span>
-        <span className={`font-mono text-4xl font-black tracking-tight ${gameColor}`}>
-          {formatTime(match.gameTimerSec)}
-        </span>
+        {editingGameTime ? (
+          <div className="flex items-center gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-8 p-0"
+                onClick={() => setEditMinutes((v) => v + 1)}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(Math.max(0, Math.min(99, Number(e.target.value))))}
+                className="h-10 w-12 rounded border border-border bg-background text-center font-mono text-2xl font-black text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-8 p-0"
+                onClick={() => setEditMinutes((v) => Math.max(0, v - 1))}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+            </div>
+            <span className="font-mono text-2xl font-black text-foreground">:</span>
+            <div className="flex flex-col items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-8 p-0"
+                onClick={() => setEditSeconds((v) => (v >= 59 ? 0 : v + 1))}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={editSeconds}
+                onChange={(e) => setEditSeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
+                className="h-10 w-12 rounded border border-border bg-background text-center font-mono text-2xl font-black text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-8 p-0"
+                onClick={() => setEditSeconds((v) => Math.max(0, v - 1))}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="ml-1 flex flex-col gap-1">
+              <Button
+                variant="default"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => {
+                  onSetGameTimer(editMinutes * 60 + editSeconds)
+                  setEditingGameTime(false)
+                }}
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setEditingGameTime(false)}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className={`font-mono text-4xl font-black tracking-tight ${gameColor}`}>
+              {formatTime(match.gameTimerSec)}
+            </span>
+            {canEditGameTime && !hasPendingDecision && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setEditMinutes(Math.floor(match.gameTimerSec / 60))
+                  setEditSeconds(match.gameTimerSec % 60)
+                  setEditingGameTime(true)
+                }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Timer mode label */}
