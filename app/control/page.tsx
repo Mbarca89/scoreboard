@@ -25,7 +25,7 @@ function ControlBoard() {
     setBreakTimer,
     setGameTimer,
     switchSlot,
-    campoActivo,
+    setScore,
     handleBase,
     handleConcede,
     approvePoint,
@@ -37,41 +37,44 @@ function ControlBoard() {
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
   const isPaused = activeMatch?.timerMode === "PAUSED"
+
+  // Resolve physical sides: when sidesSwapped, leftTeam is on the right and vice versa
+  const swapped = activeMatch?.sidesSwapped ?? false
+  const physLeftTeam = activeMatch ? (swapped ? activeMatch.rightTeam : activeMatch.leftTeam) : null
+  const physRightTeam = activeMatch ? (swapped ? activeMatch.leftTeam : activeMatch.rightTeam) : null
+
+  // Map physical side to data side for handleBase/handleConcede/useTimeout
+  // Physical "left" = data "left" when not swapped, data "right" when swapped
+  const toDataSide = (physSide: "left" | "right") => {
+    if (!swapped) return physSide
+    return physSide === "left" ? "right" : "left"
+  }
+
+  // For pending decision display, resolve team name using physical position
   const pendingTeamName = hasPendingDecision
-    ? state.pendingDecision!.side === "left"
-      ? activeMatch?.leftTeam.name ?? ""
-      : activeMatch?.rightTeam.name ?? ""
+    ? (() => {
+        const dataSide = state.pendingDecision!.side
+        // The pending side is stored as data side, show corresponding team name
+        if (dataSide === "left") return activeMatch?.leftTeam.name ?? ""
+        return activeMatch?.rightTeam.name ?? ""
+      })()
     : ""
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
-      {/* Header
-      <header className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-sm font-bold uppercase tracking-widest text-foreground">
-            Mesa de Control
-          </h1>
-          {state.singleMatchMode && (
-            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">
-              PARTIDO UNICO
-            </span>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground">
-          {activeMatch?.category ?? ""}
-        </span>
-      </header> */}
-
       {/* Main 3-column layout */}
       <div className="flex flex-1 gap-3">
-        {/* Left team */}
+        {/* Left team (physical) */}
         <TeamPanel
           match={activeMatch ?? null}
-          side="left"
+          team={physLeftTeam}
+          physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase("left")}
-          onTimeout={() => useTimeout(state.activeSlot, "left")}
-          onConcede={() => handleConcede("left")}
+          onBase={() => handleBase(toDataSide("left"))}
+          onTimeout={() => useTimeout(state.activeSlot, toDataSide("left"))}
+          onConcede={() => handleConcede(toDataSide("left"))}
+          onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
+          onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
           isPaused={isPaused}
         />
@@ -85,7 +88,7 @@ function ControlBoard() {
             onResume={resumeTimer}
             onSetBreak={setBreakTimer}
             onSetGameTimer={setGameTimer}
-            onCampoActivo={campoActivo}
+            onCampoActivo={() => {}}
             hasPendingDecision={hasPendingDecision}
           />
 
@@ -118,14 +121,17 @@ function ControlBoard() {
           )}
         </div>
 
-        {/* Right team */}
+        {/* Right team (physical) */}
         <TeamPanel
           match={activeMatch ?? null}
-          side="right"
+          team={physRightTeam}
+          physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase("right")}
-          onTimeout={() => useTimeout(state.activeSlot, "right")}
-          onConcede={() => handleConcede("right")}
+          onBase={() => handleBase(toDataSide("right"))}
+          onTimeout={() => useTimeout(state.activeSlot, toDataSide("right"))}
+          onConcede={() => handleConcede(toDataSide("right"))}
+          onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
+          onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
           isPaused={isPaused}
         />

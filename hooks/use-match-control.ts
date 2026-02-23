@@ -24,6 +24,7 @@ function buildMatchState(m: Match): MatchState {
       score: m.right_score,
       timeoutUsed: false,
     },
+    sidesSwapped: false,
     gameTimerSec: m.time_remaining_sec > 0 ? m.time_remaining_sec : rules.gameTimeSec,
     breakTimerSec: rules.breakTimeSec,
     timerMode: "IDLE" as TimerMode,
@@ -149,6 +150,14 @@ export function useMatchControl(eventId: string) {
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
     const waiting = s.activeSlot === "A" ? s.matchB : s.matchA
 
+    // Resolve physical sides based on sidesSwapped flag
+    const aSwapped = active?.sidesSwapped ?? false
+    const physLeftTeam = active ? (aSwapped ? active.rightTeam : active.leftTeam) : null
+    const physRightTeam = active ? (aSwapped ? active.leftTeam : active.rightTeam) : null
+    const wSwapped = waiting?.sidesSwapped ?? false
+    const wPhysLeft = waiting ? (wSwapped ? waiting.rightTeam : waiting.leftTeam) : null
+    const wPhysRight = waiting ? (wSwapped ? waiting.leftTeam : waiting.rightTeam) : null
+
     try {
       await fetch("/api/live-state", {
         method: "PUT",
@@ -161,19 +170,19 @@ export function useMatchControl(eventId: string) {
           game_timer_sec: active?.gameTimerSec ?? 0,
           timer_mode: active?.timerMode ?? "IDLE",
           timer_running: active?.timerMode === "BREAK" || active?.timerMode === "GAME",
-          left_score: active?.leftTeam.score ?? 0,
-          right_score: active?.rightTeam.score ?? 0,
-          left_team_name: active?.leftTeam.name ?? "",
-          right_team_name: active?.rightTeam.name ?? "",
-          left_team_logo_path: active?.leftTeam.logoPath ?? null,
-          right_team_logo_path: active?.rightTeam.logoPath ?? null,
+          left_score: physLeftTeam?.score ?? 0,
+          right_score: physRightTeam?.score ?? 0,
+          left_team_name: physLeftTeam?.name ?? "",
+          right_team_name: physRightTeam?.name ?? "",
+          left_team_logo_path: physLeftTeam?.logoPath ?? null,
+          right_team_logo_path: physRightTeam?.logoPath ?? null,
           waiting_match_id: waiting?.matchId ?? null,
-          waiting_left_score: waiting?.leftTeam.score ?? 0,
-          waiting_right_score: waiting?.rightTeam.score ?? 0,
-          waiting_left_team_name: waiting?.leftTeam.name ?? "",
-          waiting_right_team_name: waiting?.rightTeam.name ?? "",
-          waiting_left_team_logo_path: waiting?.leftTeam.logoPath ?? null,
-          waiting_right_team_logo_path: waiting?.rightTeam.logoPath ?? null,
+          waiting_left_score: wPhysLeft?.score ?? 0,
+          waiting_right_score: wPhysRight?.score ?? 0,
+          waiting_left_team_name: wPhysLeft?.name ?? "",
+          waiting_right_team_name: wPhysRight?.name ?? "",
+          waiting_left_team_logo_path: wPhysLeft?.logoPath ?? null,
+          waiting_right_team_logo_path: wPhysRight?.logoPath ?? null,
           category: active?.category ?? "",
         }),
       })
@@ -485,6 +494,7 @@ export function useMatchControl(eventId: string) {
         const updatedMatch: MatchState = {
           ...match,
           [scoringKey]: { ...match[scoringKey], score: newScore },
+          sidesSwapped: !match.sidesSwapped,
           timerMode: "IDLE" as TimerMode,
         }
 
@@ -533,6 +543,7 @@ export function useMatchControl(eventId: string) {
       const updatedMatch: MatchState = {
         ...match,
         [teamKey]: { ...match[teamKey], score: newScore },
+        sidesSwapped: !match.sidesSwapped,
         timerMode: "IDLE" as TimerMode,
       }
 
@@ -579,6 +590,7 @@ export function useMatchControl(eventId: string) {
       const updatedMatch: MatchState = {
         ...match,
         [oppositeKey]: { ...match[oppositeKey], score: newScore },
+        sidesSwapped: !match.sidesSwapped,
         timerMode: "IDLE" as TimerMode,
       }
 
@@ -695,6 +707,32 @@ export function useMatchControl(eventId: string) {
     [prime, emitOnce, playSequence]
   )
 
+  // Manual score edit
+  const setScore = useCallback(
+    (side: "left" | "right", newScore: number) => {
+      setState((prev) => {
+        const slot = prev.activeSlot
+        const matchKey = slot === "A" ? "matchA" : "matchB"
+        const match = prev[matchKey]
+        if (!match) return prev
+        const teamKey = side === "left" ? "leftTeam" : "rightTeam"
+        const clamped = Math.max(0, Math.min(match.maxPoints, newScore))
+        const updated = {
+          ...prev,
+          [matchKey]: {
+            ...match,
+            [teamKey]: { ...match[teamKey], score: clamped },
+          },
+        }
+        const updatedMatch = updated[matchKey] as MatchState
+        saveScore(match.matchId, updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match.gameTimerSec, false)
+        syncLiveState(updated)
+        return updated
+      })
+    },
+    [saveScore, syncLiveState]
+  )
+
   return {
     state,
     activeMatch,
@@ -706,6 +744,7 @@ export function useMatchControl(eventId: string) {
     setBreakTimer,
     setGameTimer,
     switchSlot,
+    setScore,
     handleBase,
     handleConcede,
     approvePoint,
