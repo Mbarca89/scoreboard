@@ -453,12 +453,16 @@ export function useMatchControl(eventId: string) {
   }, [])
 
   // BASE (3 beeps + base.wav)
+  // The side received is the panel where the button was pressed (the opponent's base).
+  // The scoring team is the OPPOSITE side (they reached the rival's base).
   const handleBase = useCallback(
     (side: "left" | "right") => {
       prime()
       emitOnce(`ui:base:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
         playSequence({ preBeeps: BEEP_3_LONG, wav: "base" })
       )
+
+      const scoringSide: "left" | "right" = side === "left" ? "right" : "left"
 
       setState((prev) => {
         const slot = prev.activeSlot
@@ -468,7 +472,7 @@ export function useMatchControl(eventId: string) {
         return {
           ...prev,
           [matchKey]: { ...match, timerMode: "PAUSED" as TimerMode },
-          pendingDecision: { side, matchId: match.matchId },
+          pendingDecision: { side: scoringSide, matchId: match.matchId },
         }
       })
     },
