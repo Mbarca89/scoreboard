@@ -515,7 +515,11 @@ export function useMatchControl(eventId: string) {
         breakSoundsPlayedRef.current.clear()
         const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
-        if (result.activeSlot !== prev.activeSlot) {
+        if (isFinished) {
+          setTimeout(() => {
+            playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
+          }, 1500)
+        } else if (result.activeSlot !== prev.activeSlot) {
           emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
             playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
           )
@@ -564,7 +568,11 @@ export function useMatchControl(eventId: string) {
       breakSoundsPlayedRef.current.clear()
       const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
-      if (result.activeSlot !== prev.activeSlot) {
+      if (isFinished) {
+        setTimeout(() => {
+          playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
+        }, 1500)
+      } else if (result.activeSlot !== prev.activeSlot) {
         emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
         )
@@ -611,7 +619,11 @@ export function useMatchControl(eventId: string) {
       breakSoundsPlayedRef.current.clear()
       const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
-      if (result.activeSlot !== prev.activeSlot) {
+      if (isFinished) {
+        setTimeout(() => {
+          playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
+        }, 1500)
+      } else if (result.activeSlot !== prev.activeSlot) {
         emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
         )
