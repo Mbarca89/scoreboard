@@ -100,6 +100,7 @@ export interface MatchState {
   slot: AXLSlot
   leftTeam: TeamState
   rightTeam: TeamState
+  sidesSwapped: boolean
   gameTimerSec: number
   breakTimerSec: number
   timerMode: TimerMode
