@@ -8,10 +8,13 @@ interface BlockSelectorProps {
   eventId: string
   currentBlockId: string
   activeSlot: AXLSlot
+  matchA: { name: string; finished: boolean } | null
+  matchB: { name: string; finished: boolean } | null
   onSelectBlock: (blockId: string) => void
+  onSwitchSlot: (slot: AXLSlot) => void
 }
 
-export function BlockSelector({ eventId, currentBlockId, activeSlot, onSelectBlock }: BlockSelectorProps) {
+export function BlockSelector({ eventId, currentBlockId, activeSlot, matchA, matchB, onSelectBlock, onSwitchSlot }: BlockSelectorProps) {
   const [blocks, setBlocks] = useState<FixtureBlock[]>([])
 
   useEffect(() => {
@@ -25,20 +28,26 @@ export function BlockSelector({ eventId, currentBlockId, activeSlot, onSelectBlo
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
       {/* Slot tabs */}
       <div className="flex items-center gap-1 rounded-md bg-secondary p-0.5">
-        <div
+        <button
+          type="button"
+          onClick={() => onSwitchSlot("A")}
+          disabled={!matchA}
           className={`rounded-sm px-3 py-1 text-xs font-semibold transition-colors ${
-            activeSlot === "A" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-          }`}
+            activeSlot === "A" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          } ${!matchA ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
         >
           Partido A
-        </div>
-        <div
+        </button>
+        <button
+          type="button"
+          onClick={() => onSwitchSlot("B")}
+          disabled={!matchB}
           className={`rounded-sm px-3 py-1 text-xs font-semibold transition-colors ${
-            activeSlot === "B" ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-          }`}
+            activeSlot === "B" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          } ${!matchB ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
         >
           Partido B
-        </div>
+        </button>
       </div>
 
       <div className="mx-2 h-6 w-px bg-border" />

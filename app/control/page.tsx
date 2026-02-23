@@ -23,6 +23,8 @@ function ControlBoard() {
     stopTimer,
     resumeTimer,
     setBreakTimer,
+    setGameTimer,
+    switchSlot,
     campoActivo,
     handleBase,
     handleConcede,
@@ -82,6 +84,7 @@ function ControlBoard() {
             onStop={stopTimer}
             onResume={resumeTimer}
             onSetBreak={setBreakTimer}
+            onSetGameTimer={setGameTimer}
             onCampoActivo={campoActivo}
             hasPendingDecision={hasPendingDecision}
           />
@@ -133,7 +136,10 @@ function ControlBoard() {
         eventId={eventId}
         currentBlockId={state.blockId}
         activeSlot={state.activeSlot}
+        matchA={state.matchA ? { name: state.matchA.leftTeam.name + " vs " + state.matchA.rightTeam.name, finished: state.matchA.isFinished } : null}
+        matchB={state.matchB ? { name: state.matchB.leftTeam.name + " vs " + state.matchB.rightTeam.name, finished: state.matchB.isFinished } : null}
         onSelectBlock={loadBlock}
+        onSwitchSlot={switchSlot}
       />
     </div>
   )

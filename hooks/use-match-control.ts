@@ -408,6 +408,35 @@ export function useMatchControl(eventId: string) {
     })
   }, [])
 
+  // Set game timer manually
+  const setGameTimer = useCallback((seconds: number) => {
+    setState((prev) => {
+      const slot = prev.activeSlot
+      const matchKey = slot === "A" ? "matchA" : "matchB"
+      const match = prev[matchKey]
+      if (!match) return prev
+      return {
+        ...prev,
+        [matchKey]: { ...match, gameTimerSec: Math.max(0, seconds) },
+      }
+    })
+  }, [])
+
+  // Switch active slot manually
+  const switchSlot = useCallback((targetSlot: AXLSlot) => {
+    setState((prev) => {
+      if (prev.activeSlot === targetSlot) return prev
+      const targetMatchKey = targetSlot === "A" ? "matchA" : "matchB"
+      const targetMatch = prev[targetMatchKey]
+      if (!targetMatch) return prev
+      return {
+        ...prev,
+        activeSlot: targetSlot,
+        pendingDecision: null,
+      }
+    })
+  }, [])
+
   // BASE (3 beeps + base.wav)
   const handleBase = useCallback(
     (side: "left" | "right") => {
@@ -669,6 +698,8 @@ export function useMatchControl(eventId: string) {
     stopTimer,
     resumeTimer,
     setBreakTimer,
+    setGameTimer,
+    switchSlot,
     handleBase,
     handleConcede,
     approvePoint,
