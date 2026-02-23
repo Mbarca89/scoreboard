@@ -32,11 +32,15 @@ export async function PUT(req: NextRequest) {
     right_score,
     left_team_name,
     right_team_name,
+    left_team_logo_path,
+    right_team_logo_path,
     waiting_match_id,
     waiting_left_score,
     waiting_right_score,
     waiting_left_team_name,
     waiting_right_team_name,
+    waiting_left_team_logo_path,
+    waiting_right_team_logo_path,
     category,
   } = body
 
@@ -49,15 +53,19 @@ export async function PUT(req: NextRequest) {
       event_id, active_match_id, active_slot,
       break_timer_sec, game_timer_sec, timer_mode, timer_running,
       left_score, right_score, left_team_name, right_team_name,
+      left_team_logo_path, right_team_logo_path,
       waiting_match_id, waiting_left_score, waiting_right_score,
       waiting_left_team_name, waiting_right_team_name,
+      waiting_left_team_logo_path, waiting_right_team_logo_path,
       category, updated_at
     ) VALUES (
       ${event_id}, ${active_match_id ?? null}, ${active_slot ?? "A"},
       ${break_timer_sec ?? 60}, ${game_timer_sec ?? 0}, ${timer_mode ?? "IDLE"}, ${timer_running ?? false},
       ${left_score ?? 0}, ${right_score ?? 0}, ${left_team_name ?? ""}, ${right_team_name ?? ""},
+      ${left_team_logo_path ?? null}, ${right_team_logo_path ?? null},
       ${waiting_match_id ?? null}, ${waiting_left_score ?? 0}, ${waiting_right_score ?? 0},
       ${waiting_left_team_name ?? ""}, ${waiting_right_team_name ?? ""},
+      ${waiting_left_team_logo_path ?? null}, ${waiting_right_team_logo_path ?? null},
       ${category ?? ""}, now()
     )
     ON CONFLICT (event_id) DO UPDATE SET
@@ -71,11 +79,15 @@ export async function PUT(req: NextRequest) {
       right_score = EXCLUDED.right_score,
       left_team_name = EXCLUDED.left_team_name,
       right_team_name = EXCLUDED.right_team_name,
+      left_team_logo_path = EXCLUDED.left_team_logo_path,
+      right_team_logo_path = EXCLUDED.right_team_logo_path,
       waiting_match_id = EXCLUDED.waiting_match_id,
       waiting_left_score = EXCLUDED.waiting_left_score,
       waiting_right_score = EXCLUDED.waiting_right_score,
       waiting_left_team_name = EXCLUDED.waiting_left_team_name,
       waiting_right_team_name = EXCLUDED.waiting_right_team_name,
+      waiting_left_team_logo_path = EXCLUDED.waiting_left_team_logo_path,
+      waiting_right_team_logo_path = EXCLUDED.waiting_right_team_logo_path,
       category = EXCLUDED.category,
       updated_at = now()
   `

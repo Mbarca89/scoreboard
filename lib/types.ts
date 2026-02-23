@@ -72,11 +72,15 @@ export interface MatchLiveState {
   right_score: number
   left_team_name: string
   right_team_name: string
+  left_team_logo_path: string | null
+  right_team_logo_path: string | null
   waiting_match_id: string | null
   waiting_left_score: number
   waiting_right_score: number
   waiting_left_team_name: string
   waiting_right_team_name: string
+  waiting_left_team_logo_path: string | null
+  waiting_right_team_logo_path: string | null
   category: string
   updated_at: string
 }
@@ -86,6 +90,7 @@ export interface MatchLiveState {
 export interface TeamState {
   id: string
   name: string
+  logoPath: string | null
   score: number
   timeoutUsed: boolean
 }
