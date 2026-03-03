@@ -173,17 +173,17 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
         </div>
 
         {/* Teams + Score row */}
-        <div className="flex w-full max-w-5xl items-center justify-center gap-4 md:gap-8">
+        <div className="flex w-full items-center justify-between gap-4 md:gap-8">
           {/* Left team */}
-          <div className="flex flex-1 items-center justify-end gap-4">
-            <h2 className="text-right text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
-              {data.left_team_name}
-            </h2>
+          <div className="flex flex-col flex-1 items-center justify-end gap-4">
             <TeamLogo
               src={data.left_team_logo_path}
               alt={data.left_team_name}
-              size={72}
+              size={144}
             />
+            <h2 className="text-right text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
+              {data.left_team_name}
+            </h2>
           </div>
 
           {/* Score */}
@@ -198,11 +198,11 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
           </div>
 
           {/* Right team */}
-          <div className="flex flex-1 items-center justify-start gap-4">
+          <div className="flex flex-col flex-1 items-center justify-start gap-4">
             <TeamLogo
               src={data.right_team_logo_path}
               alt={data.right_team_name}
-              size={72}
+              size={144}
             />
             <h2 className="text-left text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
               {data.right_team_name}
@@ -213,11 +213,10 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
         {/* Game timer + Mode */}
         <div className="flex flex-col items-center gap-1">
           <span
-            className={`font-mono font-black tracking-tight ${
-              isBreak
+            className={`font-mono font-black tracking-tight ${isBreak
                 ? "text-2xl text-neutral-500 md:text-3xl"
                 : `text-5xl md:text-7xl ${style.text}`
-            }`}
+              }`}
             style={!isBreak ? { textShadow: "0 0 20px currentColor" } : undefined}
           >
             {formatTime(data.game_timer_sec)}
