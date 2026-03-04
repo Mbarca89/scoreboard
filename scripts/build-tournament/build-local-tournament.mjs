@@ -788,9 +788,13 @@ async function main() {
         console.log("🏁 Insert matches into Postgres:", allMatches.length);
         await pgInsertMatches(pgClient, allMatches, teamInfoById, logoPathByTeamId);
 
-        const firstBlockId = finalBlocks[0]?.sk ?? null;
-        if (firstBlockId) {
+        console.log("Blocks generated:", finalBlocks.length);
+
+        if (finalBlocks.length > 0) {
+            const firstBlockId = finalBlocks[0].sk;
             await pgEnsureEventRuntimeState(pgClient, EVENT_ID, firstBlockId);
+        } else {
+            console.warn("⚠️ No blocks generated, skipping event_runtime_state");
         }
 
         console.log("✅ Postgres listo.");
