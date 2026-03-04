@@ -6,12 +6,21 @@
  * - Inserta en Postgres local
  * - Persiste en Dynamo (FixtureBlocks, Matches)
  * - Descarga logos desde S3 a ./assets/teams/<teamId>/logo.png
- */
+*/
+console.log("RUNNING:", import.meta.url)
+console.log("CWD:", process.cwd())
 
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import process from "node:process";
+import dotenv from 'dotenv'
+
+dotenv.config({ path: '.env.local' })
+
+console.log("ARGV:", process.argv)
+console.log("eventId arg (argv[2]):", process.argv[2])
+console.log("ENV EVENT_ID:", process.env.EVENT_ID)
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -61,6 +70,7 @@ const s3 = new S3Client({ region: AWS_REGION });
 
 /** ---------- Helpers ---------- */
 function die(msg) {
+    console.log("Error")
     console.error(msg);
     process.exit(1);
 }
@@ -98,7 +108,12 @@ async function getTeam(teamId) {
 }
 
 async function downloadLogo(teamId, logoKey) {
-    if (!logoKey) return null;
+
+    if (!logoKey) {
+        console.log(logoKey, "Logo no encontrado")
+        return null;
+    }
+
 
     ensureDir(path.join(TEAMS_ASSETS_DIR, teamId));
     const ext = path.extname(logoKey) || ".png";
@@ -250,21 +265,35 @@ function buildRegularMatchesForCategory(teams, category) {
 
     // ---------- N = 4 ----------
     if (n === 4) {
-        const base = [];
-        for (let i = 0; i < ids.length; i++) {
-            for (let j = i + 1; j < ids.length; j++) {
-                base.push([ids[i], ids[j]]);
-            }
+        // 1) randomizar el orden de equipos (para que no toque siempre igual)
+        const shuffled = shuffle(ids); // usa tu shuffle() que ya tenés
+        const [a, b, c, d] = shuffled;
+
+        // 2) 3 rounds posibles (perfect matchings)
+        const rounds = [
+            [[a, b], [c, d]],
+            [[a, c], [b, d]],
+            [[a, d], [b, c]],
+        ];
+
+        // 3) Armar 4 rounds (cada round = 2 partidos, usan a los 4 equipos)
+        //    Necesitamos 4 rounds para que cada equipo juegue 4 partidos.
+        //    Elegimos un índice para repetir (0/1/2) al azar
+        const repeatIdx = crypto.randomInt(0, 3);
+
+        // Orden base: ponemos los 3 rounds una vez, + el round repetido
+        const plan = [0, 1, 2, repeatIdx];
+
+        // 4) Shuffle del orden de rounds para que no sea siempre la misma secuencia
+        const planShuffled = shuffle(plan);
+
+        // 5) Flatten a lista de matchups (8 matches)
+        const matchups = [];
+        for (const ri of planShuffled) {
+            matchups.push(...rounds[ri]);
         }
 
-        const extraNeeded = targetTotalMatches - base.length;
-        const extra = [];
-
-        for (let k = 0; k < extraNeeded; k++) {
-            extra.push(base[crypto.randomInt(0, base.length)]);
-        }
-
-        return [...base, ...extra];
+        return matchups;
     }
 
     // ---------- N = 5 ----------
@@ -392,23 +421,41 @@ function assignDays(matchups, teamsById) {
     return matches;
 }
 
-function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) {
+/**
+ * Arma blocks (2 partidos por block) sin mezclar equipos dentro del block.
+ * - Sin concepto de "day"
+ * - Best-effort: minimiza BYE usando heurística "most constrained first"
+ *
+ * @param {string} eventId
+ * @param {string} category
+ * @param {Array<[string,string]>} matchups  // lista de cruces [teamA, teamB]
+ * @param {() => string} nextBlockIdFn       // devuelve "0001", "0002", ...
+ * @returns {{ blocks: any[], matches: any[] }}
+ */
+function makeBlocksForCategoryNoDays(eventId, category, matchups, nextBlockIdFn) {
     const blocks = [];
     const matches = [];
 
-    // helper: crea match BYE terminado
-    const makeByeMatch = (blockSk, day, slot) => {
+    const nowIso = () => new Date().toISOString();
+
+    const sharesTeam = (m1, m2) =>
+        m1.a === m2.a || m1.a === m2.b || m1.b === m2.a || m1.b === m2.b;
+
+    // Convertimos matchups a objetos
+    const remaining = matchups.map(([a, b]) => ({ a, b }));
+
+    // Crea un match BYE terminado
+    const makeByeMatch = (blockSk, slot) => {
         const matchId = crypto.randomUUID();
-        matches.push({
+        const item = {
             eventId,
             sk: `MATCH#${matchId}`,
             matchId,
             blockSk,
             slot,
-            day,
             category,
             stage: "GROUP",
-            displayLabel: `D${day} - BYE`,
+            displayLabel: `BYE`,
             leftTeamId: "BYE",
             rightTeamId: "BYE",
             createdAt: nowIso(),
@@ -418,71 +465,119 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
             timeRemainingSec: 0,
             notes: "BYE slot (sin partido)",
             isFinished: true,
-            resultType: null,
+            resultType: "DRAW",          // opcional si tu schema lo soporta
             winnerTeamId: null,
-        });
+        };
+        matches.push(item);
         return matchId;
     };
 
-    // Procesamos por día para evitar mezclar day1/day2 en el mismo block
-    const byDay = new Map();
-    for (const m of stagedMatches) {
-        if (!byDay.has(m.day)) byDay.set(m.day, []);
-        byDay.get(m.day).push(m);
-    }
+    // Heurística: elegimos el match que tiene menos posibles parejas
+    const pickBestPairIndexes = (list) => {
+        if (list.length < 2) return { i: 0, j: -1 };
 
-    for (const [day, list] of byDay.entries()) {
-        const remaining = [...list];
+        // Precomputar cantidad de opciones por índice
+        const optionCount = new Array(list.length).fill(0);
+        for (let i = 0; i < list.length; i++) {
+            let cnt = 0;
+            for (let j = 0; j < list.length; j++) {
+                if (i === j) continue;
+                if (!sharesTeam(list[i], list[j])) cnt++;
+            }
+            optionCount[i] = cnt;
+        }
 
-        while (remaining.length) {
-            const m1 = remaining.shift();
+        // i = el más restringido
+        let iBest = 0;
+        for (let i = 1; i < list.length; i++) {
+            if (optionCount[i] < optionCount[iBest]) iBest = i;
+        }
 
-            // buscar un segundo partido que NO comparta equipos
-            const idx = remaining.findIndex(
-                (m2) =>
-                    m2.a !== m1.a &&
-                    m2.a !== m1.b &&
-                    m2.b !== m1.a &&
-                    m2.b !== m1.b
-            );
+        // Elegimos un j compatible que también sea restringido (para no bloquear)
+        let jBest = -1;
+        let bestScore = -Infinity;
 
-            const m2 = idx >= 0 ? remaining.splice(idx, 1)[0] : null;
+        for (let j = 0; j < list.length; j++) {
+            if (j === iBest) continue;
+            if (sharesTeam(list[iBest], list[j])) continue;
 
-            const blockId = nextBlockIdFn();
-            const blockSk = `BLOCK#${blockId}`;
+            // score mayor si optionCount[j] es bajo
+            const score = -optionCount[j];
+            if (score > bestScore) {
+                bestScore = score;
+                jBest = j;
+            }
+        }
 
-            const matchAId = crypto.randomUUID();
-            const matchBId = m2 ? crypto.randomUUID() : null;
+        return { i: iBest, j: jBest };
+    };
 
-            // block
-            blocks.push({
-                eventId,
-                sk: blockSk,
-                blockOrder: null,
-                day,
-                category,
-                stage: "GROUP",
-                matchAId,
-                matchBId: matchBId ?? null,
-                activeSlot: "A",
-                status: "SCHEDULED",
-                createdAt: nowIso(),
-                updatedAt: nowIso(),
-            });
+    while (remaining.length) {
+        const { i, j } = pickBestPairIndexes(remaining);
 
-            // match A real
+        const m1 = remaining.splice(i, 1)[0];
+        const m2 = j >= 0
+            ? remaining.splice(j > i ? (j - 1) : j, 1)[0]
+            : null;
+
+        const blockId = nextBlockIdFn();
+        const blockSk = `BLOCK#${blockId}`;
+
+        const matchAId = crypto.randomUUID();
+        const matchBId = m2 ? crypto.randomUUID() : null;
+
+        // Crear block
+        const block = {
+            eventId,
+            sk: blockSk,
+            blockOrder: null,
+            category,
+            stage: "GROUP",
+            matchAId,
+            matchBId: matchBId ?? null,
+            activeSlot: "A",
+            status: "SCHEDULED",
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+        };
+        blocks.push(block);
+
+        // Match A real
+        matches.push({
+            eventId,
+            sk: `MATCH#${matchAId}`,
+            matchId: matchAId,
+            blockSk,
+            slot: "A",
+            category,
+            stage: "GROUP",
+            displayLabel: null,
+            leftTeamId: m1.a,
+            rightTeamId: m1.b,
+            createdAt: nowIso(),
+            updatedAt: nowIso(),
+            leftScore: 0,
+            rightScore: 0,
+            timeRemainingSec: 0,
+            notes: null,
+            isFinished: false,
+            resultType: null,
+            winnerTeamId: null,
+        });
+
+        if (m2) {
+            // Match B real
             matches.push({
                 eventId,
-                sk: `MATCH#${matchAId}`,
-                matchId: matchAId,
+                sk: `MATCH#${matchBId}`,
+                matchId: matchBId,
                 blockSk,
-                slot: "A",
-                day,
+                slot: "B",
                 category,
                 stage: "GROUP",
                 displayLabel: null,
-                leftTeamId: m1.a,
-                rightTeamId: m1.b,
+                leftTeamId: m2.a,
+                rightTeamId: m2.b,
                 createdAt: nowIso(),
                 updatedAt: nowIso(),
                 leftScore: 0,
@@ -493,37 +588,10 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
                 resultType: null,
                 winnerTeamId: null,
             });
-
-            if (m2) {
-                // match B real
-                matches.push({
-                    eventId,
-                    sk: `MATCH#${matchBId}`,
-                    matchId: matchBId,
-                    blockSk,
-                    slot: "B",
-                    day,
-                    category,
-                    stage: "GROUP",
-                    displayLabel: null,
-                    leftTeamId: m2.a,
-                    rightTeamId: m2.b,
-                    createdAt: nowIso(),
-                    updatedAt: nowIso(),
-                    leftScore: 0,
-                    rightScore: 0,
-                    timeRemainingSec: 0,
-                    notes: null,
-                    isFinished: false,
-                    resultType: null,
-                    winnerTeamId: null,
-                });
-            } else {
-                // ✅ No había segundo partido compatible => BYE terminado en B
-                const byeId = makeByeMatch(blockSk, day, "B");
-                // opcional: guardar matchBId en el block para que Dynamo lo tenga
-                blocks[blocks.length - 1].matchBId = byeId;
-            }
+        } else {
+            // No se pudo emparejar => BYE terminado en B
+            const byeId = makeByeMatch(blockSk, "B");
+            blocks[blocks.length - 1].matchBId = byeId;
         }
     }
 
@@ -548,20 +616,25 @@ async function pgEnsureEventRuntimeState(pg, eventId, firstBlockId) {
             [eventId, firstBlockId]
         );
     } catch (e) {
-        if (String(e?.message || "").toLowerCase().includes("event_runtime_state")) {
-            console.warn("ℹ️  No existe tabla event_runtime_state en Postgres (ok).");
+        if (e?.code === "42P01") {
+            console.warn("ℹ️ No existe tabla event_runtime_state en Postgres (ok).");
             return;
         }
         throw e;
+
     }
 }
 
 async function pgResetEvent(pg, eventId) {
-    // Borra fixture/matches previos para re-armar (si querés repetir simulación)
-    // Si tus FKs son ON DELETE CASCADE, basta con borrar blocks.
-    // Acá borro matches primero por las dudas.
-    console.log("Reset event", eventId)
+    console.log("Reset event", eventId);
+
+    // 1) borrar runtime_state primero (evita FK/trigger side effects)
+    await pg.query(`DELETE FROM event_runtime_state WHERE event_id = $1`, [eventId]);
+
+    // 2) borrar matches
     await pg.query(`DELETE FROM matches WHERE event_id = $1`, [eventId]);
+
+    // 3) borrar blocks
     await pg.query(`DELETE FROM fixture_blocks WHERE event_id = $1`, [eventId]);
 }
 
@@ -593,31 +666,45 @@ async function pgInsertMatches(pg, matches, teamInfoById, logoPathByTeamId) {
         const label = `D${m.day} - ${leftName} vs ${rightName}`;
         m.displayLabel = label;
 
+        const leftScore = Number.isFinite(m.leftScore) ? m.leftScore : 0;
+        const rightScore = Number.isFinite(m.rightScore) ? m.rightScore : 0;
+        const timeRemainingSec = Number.isFinite(m.timeRemainingSec) ? m.timeRemainingSec : 0;
+
+        const isFinished = !!m.isFinished;
+        const notes = m.notes ?? null;
+
+        // Si está terminado, le ponemos timestamp (si tu columna finished_at existe)
+        const finishedAt = isFinished ? new Date().toISOString() : null;
+
         await pg.query(
             `
-      INSERT INTO matches(event_id, match_id, block_id, slot, category, stage, group_id, round_number,
-                          scheduled_at, display_label,
-                          left_team_id, left_team_name, left_team_logo_path,
-                          right_team_id, right_team_name, right_team_logo_path,
-                          left_score, right_score, time_remaining_sec, notes,
-                          is_finished, result_type, winner_team_id,
-                          is_overtime, overtime_type, overtime_winner_team_id,
-                          reported_by_user_id, finished_at)
-      VALUES ($1,$2,$3,$4,$5,$6,NULL,NULL,
-              NULL,$7,
-              $8,$9,$10,
-              $11,$12,$13,
-              0,0,0,NULL,
-              FALSE,NULL,NULL,
-              FALSE,NULL,NULL,
-              NULL,NULL)
+      INSERT INTO matches(
+        event_id, match_id, block_id, slot, category, stage, group_id, round_number,
+        scheduled_at, display_label,
+        left_team_id, left_team_name, left_team_logo_path,
+        right_team_id, right_team_name, right_team_logo_path,
+        left_score, right_score, time_remaining_sec, notes,
+        is_finished, result_type, winner_team_id,
+        is_overtime, overtime_type, overtime_winner_team_id,
+        reported_by_user_id, finished_at
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,NULL,NULL,
+        NULL,$7,
+        $8,$9,$10,
+        $11,$12,$13,
+        $14,$15,$16,$17,
+        $18,$19,$20,
+        FALSE,NULL,NULL,
+        NULL,$21
+      )
       `,
             [
                 m.eventId,
                 m.matchId,
                 m.blockSk,
                 m.slot,
-                m.category,
+                m.category, // <- tu mapper al enum
                 m.stage,
                 label,
                 m.leftTeamId,
@@ -626,6 +713,14 @@ async function pgInsertMatches(pg, matches, teamInfoById, logoPathByTeamId) {
                 m.rightTeamId,
                 rightName,
                 rightLogoPath,
+                leftScore,
+                rightScore,
+                timeRemainingSec,
+                notes,
+                isFinished,
+                m.resultType ?? null,
+                m.winnerTeamId ?? null,
+                finishedAt,
             ]
         );
     }
@@ -719,16 +814,9 @@ async function main() {
         );
 
         const matchups = buildRegularMatchesForCategory(teams, category); // [[a,b]...]
+        const { blocks, matches } = makeBlocksForCategoryNoDays(EVENT_ID, category, matchups, nextBlockIdFn);
+
         console.log("Category", category, "matches:", matchups.length)
-        const teamsById = new Map(teams.map(t => [t.teamId, t]));
-        const withDays = assignDays(matchups, teamsById); // [{a,b,day}...]
-
-        // Muy importante: evitar blocks con day mezclado
-        // ordenamos por day primero (day1 luego day2) para que al agrupar de a 2 no se mezclen
-        const sorted = withDays.sort((x, y) => x.day - y.day);
-
-        const { blocks, matches } = makeBlocksForCategory(EVENT_ID, category, sorted, nextBlockIdFn);
-
         allBlocksByCat.set(category, blocks);
         allMatchesByCat.set(category, matches);
     }

@@ -10,7 +10,7 @@ export interface CategoryRule {
 export const CATEGORY_RULES: Record<AXLCategory, CategoryRule> = {
   "5v5 D3/D4": {
     maxPoints: 3,
-    gameTimeSec: 18 * 60,
+    gameTimeSec: 8 * 60,
     breakTimeSec: 60,
     singleMatchBreakTimeSec: 2 * 60,
   },

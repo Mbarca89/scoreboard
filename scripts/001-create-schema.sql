@@ -7,7 +7,7 @@ BEGIN;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'axl_category') THEN
-    CREATE TYPE axl_category AS ENUM ('5v5 D3/D4', '3v3 D5', '3v3 D6');
+    CREATE TYPE axl_category AS ENUM ('5v5 D3/D4', '3v3 D4/D5', '3v3 D6');
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'axl_event_stage') THEN

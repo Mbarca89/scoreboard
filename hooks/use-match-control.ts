@@ -218,7 +218,13 @@ export function useMatchControl(eventId: string) {
   // Load matches for a block
   const loadBlock = useCallback(
     async (blockId: string) => {
-      const res = await fetch(`/api/matches?eventId=${eventId}&blockId=${blockId}`)
+      console.log("Obteniendo bloque:", blockId)
+
+      const url =
+        `/api/matches?eventId=${encodeURIComponent(eventId)}` +
+        `&blockId=${encodeURIComponent(blockId)}`
+
+      const res = await fetch(url)
       const matches: Match[] = await res.json()
 
       const matchA = matches.find((m) => m.slot === "A")
