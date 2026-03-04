@@ -27,30 +27,6 @@ const POINTS = {
   DRAW: 1,
   LOSS: 0,
 }
-
-function normalizeGroupId(groupId: string | null): string {
-  const normalized = groupId?.trim()
-  return normalized && normalized.length > 0 ? normalized : "Sin grupo"
-}
-
-function normalizeBoolean(value: unknown): boolean {
-  if (typeof value === "boolean") return value
-  if (typeof value === "number") return value === 1
-  if (typeof value === "string") {
-    const normalized = value.trim().toLowerCase()
-    return normalized === "true" || normalized === "t" || normalized === "1"
-  }
-  return false
-}
-
-function shouldCountMatch(match: Match): boolean {
-  if (normalizeBoolean(match.is_finished)) return true
-  if (match.finished_at) return true
-  if (match.winner_team_id) return true
-  if (match.result_type) return true
-  return false
-}
-
 function ensureTeam(
   table: Map<string, TeamStanding>,
   key: string,
@@ -77,10 +53,12 @@ export function buildStandings(matches: Match[]): GroupStandings[] {
   const groupMap = new Map<string, Map<string, TeamStanding>>()
 
   for (const match of matches) {
-    if (!shouldCountMatch(match)) continue
+
+    if (!match.group_id) continue
+    if (!match.is_finished) continue
 
     const category = match.category
-    const groupId = normalizeGroupId(match.group_id)
+    const groupId = match.group_id
     const groupKey = `${category}::${groupId}`
 
     if (!groupMap.has(groupKey)) {
