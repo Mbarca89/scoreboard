@@ -729,6 +729,11 @@ export function useMatchControl(eventId: string) {
     [prime, emitOnce, playSequence]
   )
 
+  // Keep live state always synced with control table actions (start/stop/pause/resume/switch)
+  useEffect(() => {
+    syncLiveState(state)
+  }, [state, syncLiveState])
+
   // Manual score edit
   const setScore = useCallback(
     (side: "left" | "right", newScore: number) => {
