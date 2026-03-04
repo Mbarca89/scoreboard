@@ -27,7 +27,6 @@ const POINTS = {
   DRAW: 1,
   LOSS: 0,
 }
-
 function ensureTeam(
   table: Map<string, TeamStanding>,
   key: string,
@@ -54,6 +53,7 @@ export function buildStandings(matches: Match[]): GroupStandings[] {
   const groupMap = new Map<string, Map<string, TeamStanding>>()
 
   for (const match of matches) {
+
     if (!match.group_id) continue
     if (!match.is_finished) continue
 
