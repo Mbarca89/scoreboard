@@ -534,6 +534,7 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
 async function pgEnsureEventRuntimeState(pg, eventId, firstBlockId) {
     // Si tu schema no tiene event_runtime_state, podés ignorar.
     // Intentamos upsert suave; si falla por tabla inexistente, seguimos.
+    console.log("Event Runtime Status: ", eventId, firstBlockId)
     try {
         await pg.query(
             `
@@ -559,6 +560,7 @@ async function pgResetEvent(pg, eventId) {
     // Borra fixture/matches previos para re-armar (si querés repetir simulación)
     // Si tus FKs son ON DELETE CASCADE, basta con borrar blocks.
     // Acá borro matches primero por las dudas.
+    console.log("Reset event", eventId)
     await pg.query(`DELETE FROM matches WHERE event_id = $1`, [eventId]);
     await pg.query(`DELETE FROM fixture_blocks WHERE event_id = $1`, [eventId]);
 }
