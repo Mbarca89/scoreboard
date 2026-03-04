@@ -530,14 +530,6 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
     return { blocks, matches };
 }
 
-console.log("RUNTIME_STATE args =>", {
-    EVENT_ID,
-    firstBlockSk: finalBlocks?.[0]?.sk,
-    firstBlockId,
-    typeof_EVENT_ID: typeof EVENT_ID,
-    typeof_firstBlockId: typeof firstBlockId,
-});
-
 /** ---------- Postgres insert helpers ---------- */
 async function pgEnsureEventRuntimeState(pg, eventId, firstBlockId) {
     // Si tu schema no tiene event_runtime_state, podés ignorar.
@@ -816,6 +808,15 @@ async function main() {
             if (finalBlocks.length === 0) {
                 throw new Error("No se generaron blocks. Abortando antes de escribir en Postgres/Dynamo.");
             }
+
+            console.log("RUNTIME_STATE args =>", {
+                EVENT_ID,
+                firstBlockSk: finalBlocks?.[0]?.sk,
+                firstBlockId,
+                typeof_EVENT_ID: typeof EVENT_ID,
+                typeof_firstBlockId: typeof firstBlockId,
+            });
+
             await pgEnsureEventRuntimeState(pgClient, EVENT_ID, firstBlockId);
         } else {
             console.warn("⚠️ No blocks generated, skipping event_runtime_state");
