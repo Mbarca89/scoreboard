@@ -8,7 +8,7 @@ import { BlockSelector } from "@/components/control/block-selector"
 import { useSearchParams } from "next/navigation"
 import { Suspense } from "react"
 
-const EVENT_ID = "evt-001"
+const EVENT_ID = "axl-2026-fecha-1"
 
 function ControlBoard() {
   const searchParams = useSearchParams()

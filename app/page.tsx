@@ -11,7 +11,7 @@ export default function HomePage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Link
-          href="/control?eventId=evt-001"
+          href="/control?eventId=axl-2026-fecha-1"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Monitor className="h-8 w-8 text-primary" />
@@ -22,7 +22,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/marcador?eventId=evt-001"
+          href="/marcador?eventId=axl-2026-fecha-1"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Tv className="h-8 w-8 text-accent" />
@@ -33,7 +33,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/fixture?eventId=evt-001"
+          href="/fixture?eventId=axl-2026-fecha-1"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <List className="h-8 w-8 text-chart-3" />

@@ -6,7 +6,7 @@ import { Scoreboard } from "@/components/marcador/scoreboard"
 
 function MarcadorView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "evt-001"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
 
   return <Scoreboard eventId={eventId} />
 }

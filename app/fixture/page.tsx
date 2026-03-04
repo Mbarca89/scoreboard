@@ -6,7 +6,7 @@ import { BlockList } from "@/components/fixture/block-list"
 
 function FixtureView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "evt-001"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
 
   return (
     <div className="min-h-screen bg-background p-6">
