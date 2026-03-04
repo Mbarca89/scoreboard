@@ -222,29 +222,48 @@ function pairKey(a, b) {
 }
 
 function buildRegularMatchesForCategory(teams, category) {
-    // teams: [{teamId, teamNameSnapshot, logoKey}]
     const ids = teams.map(t => t.teamId);
     const n = ids.length;
 
-    // target: 4 matches per team => total matches = n*4/2
     const targetTotalMatches = Math.floor((n * 4) / 2);
-
     const matchups = [];
-    const playedCount = new Map(ids.map(id => [id, 0]));
-    const pairCount = new Map(); // pairKey -> count
 
     if (n === 0) return matchups;
 
-    // Caso n=5: round robin completo
-    if (n === 5) {
-        // round robin de 5 => 10 matches, pero queremos 4 por equipo => exactamente los 10.
-        const order = [...ids];
-        for (let i = 0; i < order.length; i++) {
-            for (let j = i + 1; j < order.length; j++) {
-                matchups.push([order[i], order[j]]);
-            }
+    // ✅ CASO N=3: repetir cada cruce 2 veces (6 matches total)
+    if (n === 3) {
+        const [a, b, c] = ids;
+        const base = [
+            [a, b],
+            [a, c],
+            [b, c],
+        ];
+        // repetir 2 veces = 6
+        return [...base, ...base];
+    }
+
+    // ✅ CASO N=4: round robin son 6 matches; necesitamos 8 -> agregamos 2 repeticiones random
+    if (n === 4) {
+        const base = [];
+        for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) base.push([ids[i], ids[j]]);
         }
-        return matchups.slice(0, targetTotalMatches);
+        // base = 6, target = 8 => sumamos 2 repeticiones al azar
+        const extraNeeded = targetTotalMatches - base.length; // 2
+        const extra = [];
+        for (let k = 0; k < extraNeeded; k++) {
+            extra.push(base[crypto.randomInt(0, base.length)]);
+        }
+        return [...base, ...extra];
+    }
+
+    // ✅ CASO N=5: round robin exacto (10 matches)
+    if (n === 5) {
+        const base = [];
+        for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) base.push([ids[i], ids[j]]);
+        }
+        return base; // 10
     }
 
     // Caso general: generamos emparejamientos intentando completar 4 por equipo
@@ -364,20 +383,16 @@ function assignDays(matchups, teamsById) {
     return matches;
 }
 
-function makeBlocksForCategory(eventId, category, stagedMatches) {
-    // stagedMatches: [{a,b,day}] ya con day
-    // blocks de 2 matches (A y B) sin mezclar categorías
+function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) {
     const blocks = [];
     const matches = [];
 
-    let blockIndex = 0;
-
     for (let i = 0; i < stagedMatches.length; i += 2) {
-        blockIndex++;
-        const blockSk = `BLOCK#${String(blockIndex).padStart(4, "0")}`;
-
         const pair1 = stagedMatches[i];
         const pair2 = stagedMatches[i + 1] ?? null;
+
+        const blockId = nextBlockIdFn(); // ✅ global único
+        const blockSk = `BLOCK#${blockId}`;
 
         const matchAId = crypto.randomUUID();
         const matchBId = pair2 ? crypto.randomUUID() : null;
@@ -385,8 +400,8 @@ function makeBlocksForCategory(eventId, category, stagedMatches) {
         blocks.push({
             eventId,
             sk: blockSk,
-            blockOrder: null, // se setea después global
-            day: pair1.day, // si hay 2 días mezclados en un block, evitamos; acá asumimos que no
+            blockOrder: null,
+            day: pair1.day,
             category,
             stage: "GROUP",
             matchAId,
@@ -619,6 +634,9 @@ async function main() {
     const allBlocksByCat = new Map();
     const allMatchesByCat = new Map();
 
+    let globalBlockSeq = 0;
+    const nextBlockIdFn = () => String(++globalBlockSeq).padStart(4, "0");
+
     for (const [category, regItems] of byCat.entries()) {
         const teams = shuffle(
             regItems.map((r) => ({
@@ -636,7 +654,7 @@ async function main() {
         // ordenamos por day primero (day1 luego day2) para que al agrupar de a 2 no se mezclen
         const sorted = withDays.sort((x, y) => x.day - y.day);
 
-        const { blocks, matches } = makeBlocksForCategory(EVENT_ID, category, sorted);
+        const { blocks, matches } = makeBlocksForCategory(EVENT_ID, category, sorted, nextBlockIdFn);
 
         allBlocksByCat.set(category, blocks);
         allMatchesByCat.set(category, matches);
