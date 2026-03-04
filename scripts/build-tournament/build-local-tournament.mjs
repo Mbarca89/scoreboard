@@ -668,10 +668,7 @@ async function main() {
     const regs = await getRegistrations(EVENT_ID);
     if (!regs.length) die(`No hay inscripciones en ${TABLE_REGS} para eventId=${EVENT_ID}`);
     console.log("Registrations:", regs.length);
-    console.log("Categories found:", [...byCat.keys()]);
-    for (const [cat, items] of byCat.entries()) {
-        console.log(`- ${cat}: ${items.length} teams`);
-    }
+
     // Agrupar por categoría
     const byCat = new Map(); // category -> regs[]
     for (const r of regs) {
@@ -679,7 +676,10 @@ async function main() {
         if (!byCat.has(cat)) byCat.set(cat, []);
         byCat.get(cat).push(r);
     }
-
+    console.log("Categories found:", [...byCat.keys()]);
+    for (const [cat, items] of byCat.entries()) {
+        console.log(`- ${cat}: ${items.length} teams`);
+    }
     // Cargar Teams (para name/logoKey)
     const teamInfoById = new Map(); // teamId -> {teamName, logoKey}
     for (const r of regs) {
