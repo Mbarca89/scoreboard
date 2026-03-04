@@ -115,7 +115,6 @@ export function useMatchControl(eventId: string) {
   const { prime, playWav, playBeeps, playSequence } = useAudio()
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const lastSyncRef = useRef(0)
   const breakSoundsPlayedRef = useRef<Set<number>>(new Set())
   const gameSoundsPlayedRef = useRef<Set<number>>(new Set())
 
@@ -143,10 +142,6 @@ export function useMatchControl(eventId: string) {
 
   // Sync live state to DB for polling
   const syncLiveState = useCallback(async (s: ControlState) => {
-    const now = Date.now()
-    if (now - lastSyncRef.current < 800) return
-    lastSyncRef.current = now
-
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
     const waiting = s.activeSlot === "A" ? s.matchB : s.matchA
 
