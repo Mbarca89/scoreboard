@@ -222,125 +222,125 @@ function pairKey(a, b) {
 }
 
 function buildRegularMatchesForCategory(teams, category) {
-  const ids = teams.map(t => t.teamId);
-  const n = ids.length;
+    const ids = teams.map(t => t.teamId);
+    const n = ids.length;
 
-  const targetTotalMatches = Math.floor((n * 4) / 2);
+    const targetTotalMatches = Math.floor((n * 4) / 2);
 
-  if (n === 0) return [];
+    if (n === 0) return [];
 
-  // ---------- N = 2 ----------
-  if (n === 2) {
-    const [a, b] = ids;
-    return [[a,b],[a,b],[a,b],[a,b]];
-  }
-
-  // ---------- N = 3 ----------
-  if (n === 3) {
-    const [a,b,c] = ids;
-    return [
-      [a,b],
-      [a,c],
-      [b,c],
-      [a,b],
-      [a,c],
-      [b,c],
-    ];
-  }
-
-  // ---------- N = 4 ----------
-  if (n === 4) {
-    const base = [];
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        base.push([ids[i], ids[j]]);
-      }
+    // ---------- N = 2 ----------
+    if (n === 2) {
+        const [a, b] = ids;
+        return [[a, b], [a, b], [a, b], [a, b]];
     }
 
-    const extraNeeded = targetTotalMatches - base.length;
-    const extra = [];
-
-    for (let k = 0; k < extraNeeded; k++) {
-      extra.push(base[crypto.randomInt(0, base.length)]);
+    // ---------- N = 3 ----------
+    if (n === 3) {
+        const [a, b, c] = ids;
+        return [
+            [a, b],
+            [a, c],
+            [b, c],
+            [a, b],
+            [a, c],
+            [b, c],
+        ];
     }
 
-    return [...base, ...extra];
-  }
+    // ---------- N = 4 ----------
+    if (n === 4) {
+        const base = [];
+        for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) {
+                base.push([ids[i], ids[j]]);
+            }
+        }
 
-  // ---------- N = 5 ----------
-  if (n === 5) {
-    const base = [];
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        base.push([ids[i], ids[j]]);
-      }
-    }
-    return base; // 10 matches
-  }
+        const extraNeeded = targetTotalMatches - base.length;
+        const extra = [];
 
-  // ---------- N >= 6 ----------
-  const matchups = [];
-  const playedCount = new Map(ids.map(id => [id, 0]));
-  const pairCount = new Map();
+        for (let k = 0; k < extraNeeded; k++) {
+            extra.push(base[crypto.randomInt(0, base.length)]);
+        }
 
-  const pairKey = (a,b) => a < b ? `${a}_${b}` : `${b}_${a}`;
-
-  let attempts = 0;
-  const maxAttempts = 5000;
-
-  while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-    attempts++;
-
-    const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-    if (needers.length < 2) break;
-
-    const a = needers[crypto.randomInt(0, needers.length)];
-
-    let b;
-    let tries = 0;
-
-    while (tries < 20) {
-      b = needers[crypto.randomInt(0, needers.length)];
-      if (b !== a) break;
-      tries++;
+        return [...base, ...extra];
     }
 
-    if (!b || b === a) continue;
+    // ---------- N = 5 ----------
+    if (n === 5) {
+        const base = [];
+        for (let i = 0; i < ids.length; i++) {
+            for (let j = i + 1; j < ids.length; j++) {
+                base.push([ids[i], ids[j]]);
+            }
+        }
+        return base; // 10 matches
+    }
 
-    const pk = pairKey(a,b);
-    const pc = pairCount.get(pk) || 0;
+    // ---------- N >= 6 ----------
+    const matchups = [];
+    const playedCount = new Map(ids.map(id => [id, 0]));
+    const pairCount = new Map();
 
-    if (pc > 0) continue;
+    const pairKey = (a, b) => a < b ? `${a}_${b}` : `${b}_${a}`;
 
-    if (playedCount.get(a) >= 4) continue;
-    if (playedCount.get(b) >= 4) continue;
+    let attempts = 0;
+    const maxAttempts = 5000;
 
-    matchups.push([a,b]);
+    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
+        attempts++;
 
-    playedCount.set(a, playedCount.get(a)+1);
-    playedCount.set(b, playedCount.get(b)+1);
+        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
+        if (needers.length < 2) break;
 
-    pairCount.set(pk, pc+1);
-  }
+        const a = needers[crypto.randomInt(0, needers.length)];
 
-  // fallback si faltan
-  attempts = 0;
-  while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-    attempts++;
+        let b;
+        let tries = 0;
 
-    const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-    if (needers.length < 2) break;
+        while (tries < 20) {
+            b = needers[crypto.randomInt(0, needers.length)];
+            if (b !== a) break;
+            tries++;
+        }
 
-    const a = needers[crypto.randomInt(0, needers.length)];
-    const b = needers.filter(x => x !== a)[crypto.randomInt(0, needers.length-1)];
+        if (!b || b === a) continue;
 
-    matchups.push([a,b]);
+        const pk = pairKey(a, b);
+        const pc = pairCount.get(pk) || 0;
 
-    playedCount.set(a, playedCount.get(a)+1);
-    playedCount.set(b, playedCount.get(b)+1);
-  }
+        if (pc > 0) continue;
 
-  return matchups;
+        if (playedCount.get(a) >= 4) continue;
+        if (playedCount.get(b) >= 4) continue;
+
+        matchups.push([a, b]);
+
+        playedCount.set(a, playedCount.get(a) + 1);
+        playedCount.set(b, playedCount.get(b) + 1);
+
+        pairCount.set(pk, pc + 1);
+    }
+
+    // fallback si faltan
+    attempts = 0;
+    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
+        attempts++;
+
+        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
+        if (needers.length < 2) break;
+
+        const a = needers[crypto.randomInt(0, needers.length)];
+        const b = needers.filter(x => x !== a)[crypto.randomInt(0, needers.length - 1)];
+
+        matchups.push([a, b]);
+
+        playedCount.set(a, playedCount.get(a) + 1);
+        playedCount.set(b, playedCount.get(b) + 1);
+    }
+
+    return matchups;
 }
 
 function assignDays(matchups, teamsById) {
@@ -396,67 +396,93 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
     const blocks = [];
     const matches = [];
 
-    for (let i = 0; i < stagedMatches.length; i += 2) {
-        const pair1 = stagedMatches[i];
-        const pair2 = stagedMatches[i + 1] ?? null;
-
-        const blockId = nextBlockIdFn(); // ✅ global único
-        const blockSk = `BLOCK#${blockId}`;
-
-        const matchAId = crypto.randomUUID();
-        const matchBId = pair2 ? crypto.randomUUID() : null;
-
-        blocks.push({
-            eventId,
-            sk: blockSk,
-            blockOrder: null,
-            day: pair1.day,
-            category,
-            stage: "GROUP",
-            matchAId,
-            matchBId,
-            activeSlot: "A",
-            status: "SCHEDULED",
-            createdAt: nowIso(),
-            updatedAt: nowIso(),
-        });
-
+    // helper: crea match BYE terminado
+    const makeByeMatch = (blockSk, day, slot) => {
+        const matchId = crypto.randomUUID();
         matches.push({
             eventId,
-            sk: `MATCH#${matchAId}`,
-            matchId: matchAId,
+            sk: `MATCH#${matchId}`,
+            matchId,
             blockSk,
-            slot: "A",
-            day: pair1.day,
+            slot,
+            day,
             category,
             stage: "GROUP",
-            displayLabel: null,
-            leftTeamId: pair1.a,
-            rightTeamId: pair1.b,
+            displayLabel: `D${day} - BYE`,
+            leftTeamId: "BYE",
+            rightTeamId: "BYE",
             createdAt: nowIso(),
             updatedAt: nowIso(),
             leftScore: 0,
             rightScore: 0,
             timeRemainingSec: 0,
-            notes: null,
-            isFinished: false,
+            notes: "BYE slot (sin partido)",
+            isFinished: true,
             resultType: null,
             winnerTeamId: null,
         });
+        return matchId;
+    };
 
-        if (pair2) {
+    // Procesamos por día para evitar mezclar day1/day2 en el mismo block
+    const byDay = new Map();
+    for (const m of stagedMatches) {
+        if (!byDay.has(m.day)) byDay.set(m.day, []);
+        byDay.get(m.day).push(m);
+    }
+
+    for (const [day, list] of byDay.entries()) {
+        const remaining = [...list];
+
+        while (remaining.length) {
+            const m1 = remaining.shift();
+
+            // buscar un segundo partido que NO comparta equipos
+            const idx = remaining.findIndex(
+                (m2) =>
+                    m2.a !== m1.a &&
+                    m2.a !== m1.b &&
+                    m2.b !== m1.a &&
+                    m2.b !== m1.b
+            );
+
+            const m2 = idx >= 0 ? remaining.splice(idx, 1)[0] : null;
+
+            const blockId = nextBlockIdFn();
+            const blockSk = `BLOCK#${blockId}`;
+
+            const matchAId = crypto.randomUUID();
+            const matchBId = m2 ? crypto.randomUUID() : null;
+
+            // block
+            blocks.push({
+                eventId,
+                sk: blockSk,
+                blockOrder: null,
+                day,
+                category,
+                stage: "GROUP",
+                matchAId,
+                matchBId: matchBId ?? null,
+                activeSlot: "A",
+                status: "SCHEDULED",
+                createdAt: nowIso(),
+                updatedAt: nowIso(),
+            });
+
+            // match A real
             matches.push({
                 eventId,
-                sk: `MATCH#${matchBId}`,
-                matchId: matchBId,
+                sk: `MATCH#${matchAId}`,
+                matchId: matchAId,
                 blockSk,
-                slot: "B",
-                day: pair2.day,
+                slot: "A",
+                day,
                 category,
                 stage: "GROUP",
                 displayLabel: null,
-                leftTeamId: pair2.a,
-                rightTeamId: pair2.b,
+                leftTeamId: m1.a,
+                rightTeamId: m1.b,
                 createdAt: nowIso(),
                 updatedAt: nowIso(),
                 leftScore: 0,
@@ -467,6 +493,37 @@ function makeBlocksForCategory(eventId, category, stagedMatches, nextBlockIdFn) 
                 resultType: null,
                 winnerTeamId: null,
             });
+
+            if (m2) {
+                // match B real
+                matches.push({
+                    eventId,
+                    sk: `MATCH#${matchBId}`,
+                    matchId: matchBId,
+                    blockSk,
+                    slot: "B",
+                    day,
+                    category,
+                    stage: "GROUP",
+                    displayLabel: null,
+                    leftTeamId: m2.a,
+                    rightTeamId: m2.b,
+                    createdAt: nowIso(),
+                    updatedAt: nowIso(),
+                    leftScore: 0,
+                    rightScore: 0,
+                    timeRemainingSec: 0,
+                    notes: null,
+                    isFinished: false,
+                    resultType: null,
+                    winnerTeamId: null,
+                });
+            } else {
+                // ✅ No había segundo partido compatible => BYE terminado en B
+                const byeId = makeByeMatch(blockSk, day, "B");
+                // opcional: guardar matchBId en el block para que Dynamo lo tenga
+                blocks[blocks.length - 1].matchBId = byeId;
+            }
         }
     }
 
@@ -614,7 +671,7 @@ async function main() {
     // Agrupar por categoría
     const byCat = new Map(); // category -> regs[]
     for (const r of regs) {
-        const cat = r.category;
+        const cat = String(r.category ?? "").trim();
         if (!byCat.has(cat)) byCat.set(cat, []);
         byCat.get(cat).push(r);
     }
@@ -673,36 +730,47 @@ async function main() {
     // Intercalar blocks:
     // - 5v5 va "solo" (no se mezcla con 3v3)
     // - D5 y D6 se intercalan por blocks (sin mezclar dentro del block)
-    const CAT_5V5 = "5v5 D3/D4";
-    const CAT_D5 = "3v3 D5";
-    const CAT_D6 = "3v3 D6";
+    let allMatches = [];
+    let allBlocks = [];
 
-    const blocks5 = allBlocksByCat.get(CAT_5V5) ?? [];
-    const blocksD5 = allBlocksByCat.get(CAT_D5) ?? [];
-    const blocksD6 = allBlocksByCat.get(CAT_D6) ?? [];
+    for (const [cat, blocks] of allBlocksByCat.entries()) allBlocks.push(...blocks);
+    for (const [cat, matches] of allMatchesByCat.entries()) allMatches.push(...matches);
 
-    const interleaved3v3 = [];
-    let i = 0;
-    while (i < blocksD5.length || i < blocksD6.length) {
-        if (i < blocksD5.length) interleaved3v3.push(blocksD5[i]);
-        if (i < blocksD6.length) interleaved3v3.push(blocksD6[i]);
-        i++;
+
+    const is5v5 = (c) => String(c).trim().startsWith("5v5");
+    const is3v3 = (c) => String(c).trim().startsWith("3v3");
+
+    const blocks5 = allBlocks.filter(b => is5v5(b.category));
+    const blocks3 = allBlocks.filter(b => is3v3(b.category));
+
+    // intercalar por categoría dentro de 3v3 (sin mezclar dentro del block)
+    const blocks3ByCat = new Map();
+    for (const b of blocks3) {
+        const c = String(b.category).trim();
+        if (!blocks3ByCat.has(c)) blocks3ByCat.set(c, []);
+        blocks3ByCat.get(c).push(b);
     }
 
-    const finalBlocks = [...blocks5, ...interleaved3v3];
+    const cats3 = [...blocks3ByCat.keys()].sort(); // D5, D6
+    const interleaved3 = [];
+    let k = 0;
+    while (true) {
+        let added = false;
+        for (const c of cats3) {
+            const arr = blocks3ByCat.get(c);
+            if (arr && k < arr.length) { interleaved3.push(arr[k]); added = true; }
+        }
+        if (!added) break;
+        k++;
+    }
 
-    // Re-asignar blockOrder global consecutivo
+    const finalBlocks = [...blocks5, ...interleaved3];
+
+    // blockOrder global
     finalBlocks.forEach((b, idx) => {
         b.blockOrder = idx + 1;
         b.updatedAt = nowIso();
     });
-
-    // Juntar matches (y asignar displayLabel)
-    const allMatches = [
-        ...(allMatchesByCat.get(CAT_5V5) ?? []),
-        ...(allMatchesByCat.get(CAT_D5) ?? []),
-        ...(allMatchesByCat.get(CAT_D6) ?? []),
-    ];
 
     // Postgres
     const pgClient = new PgClient({ connectionString: PG_URL });
