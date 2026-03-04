@@ -667,7 +667,11 @@ async function main() {
 
     const regs = await getRegistrations(EVENT_ID);
     if (!regs.length) die(`No hay inscripciones en ${TABLE_REGS} para eventId=${EVENT_ID}`);
-
+    console.log("Registrations:", regs.length);
+    console.log("Categories found:", [...byCat.keys()]);
+    for (const [cat, items] of byCat.entries()) {
+        console.log(`- ${cat}: ${items.length} teams`);
+    }
     // Agrupar por categoría
     const byCat = new Map(); // category -> regs[]
     for (const r of regs) {
@@ -730,6 +734,12 @@ async function main() {
     // Intercalar blocks:
     // - 5v5 va "solo" (no se mezcla con 3v3)
     // - D5 y D6 se intercalan por blocks (sin mezclar dentro del block)
+    for (const [cat, blocks] of allBlocksByCat.entries()) {
+        console.log(`blocks for ${cat}:`, blocks.length);
+    }
+    for (const [cat, matches] of allMatchesByCat.entries()) {
+        console.log(`matches for ${cat}:`, matches.length);
+    }
     let allMatches = [];
     let allBlocks = [];
 
@@ -792,6 +802,12 @@ async function main() {
 
         if (finalBlocks.length > 0) {
             const firstBlockId = finalBlocks[0].sk;
+            console.log("Blocks generated:", finalBlocks.length);
+            console.log("Matches generated:", allMatches.length);
+
+            if (finalBlocks.length === 0) {
+                throw new Error("No se generaron blocks. Abortando antes de escribir en Postgres/Dynamo.");
+            }
             await pgEnsureEventRuntimeState(pgClient, EVENT_ID, firstBlockId);
         } else {
             console.warn("⚠️ No blocks generated, skipping event_runtime_state");
