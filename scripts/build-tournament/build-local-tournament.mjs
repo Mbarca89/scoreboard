@@ -222,116 +222,125 @@ function pairKey(a, b) {
 }
 
 function buildRegularMatchesForCategory(teams, category) {
-    const ids = teams.map(t => t.teamId);
-    const n = ids.length;
+  const ids = teams.map(t => t.teamId);
+  const n = ids.length;
 
-    const targetTotalMatches = Math.floor((n * 4) / 2);
-    const matchups = [];
+  const targetTotalMatches = Math.floor((n * 4) / 2);
 
-    if (n === 0) return matchups;
+  if (n === 0) return [];
 
-    // ✅ CASO N=3: repetir cada cruce 2 veces (6 matches total)
-    if (n === 3) {
-        const [a, b, c] = ids;
-        const base = [
-            [a, b],
-            [a, c],
-            [b, c],
-        ];
-        // repetir 2 veces = 6
-        return [...base, ...base];
+  // ---------- N = 2 ----------
+  if (n === 2) {
+    const [a, b] = ids;
+    return [[a,b],[a,b],[a,b],[a,b]];
+  }
+
+  // ---------- N = 3 ----------
+  if (n === 3) {
+    const [a,b,c] = ids;
+    return [
+      [a,b],
+      [a,c],
+      [b,c],
+      [a,b],
+      [a,c],
+      [b,c],
+    ];
+  }
+
+  // ---------- N = 4 ----------
+  if (n === 4) {
+    const base = [];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        base.push([ids[i], ids[j]]);
+      }
     }
 
-    // ✅ CASO N=4: round robin son 6 matches; necesitamos 8 -> agregamos 2 repeticiones random
-    if (n === 4) {
-        const base = [];
-        for (let i = 0; i < ids.length; i++) {
-            for (let j = i + 1; j < ids.length; j++) base.push([ids[i], ids[j]]);
-        }
-        // base = 6, target = 8 => sumamos 2 repeticiones al azar
-        const extraNeeded = targetTotalMatches - base.length; // 2
-        const extra = [];
-        for (let k = 0; k < extraNeeded; k++) {
-            extra.push(base[crypto.randomInt(0, base.length)]);
-        }
-        return [...base, ...extra];
+    const extraNeeded = targetTotalMatches - base.length;
+    const extra = [];
+
+    for (let k = 0; k < extraNeeded; k++) {
+      extra.push(base[crypto.randomInt(0, base.length)]);
     }
 
-    // ✅ CASO N=5: round robin exacto (10 matches)
-    if (n === 5) {
-        const base = [];
-        for (let i = 0; i < ids.length; i++) {
-            for (let j = i + 1; j < ids.length; j++) base.push([ids[i], ids[j]]);
-        }
-        return base; // 10
+    return [...base, ...extra];
+  }
+
+  // ---------- N = 5 ----------
+  if (n === 5) {
+    const base = [];
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        base.push([ids[i], ids[j]]);
+      }
+    }
+    return base; // 10 matches
+  }
+
+  // ---------- N >= 6 ----------
+  const matchups = [];
+  const playedCount = new Map(ids.map(id => [id, 0]));
+  const pairCount = new Map();
+
+  const pairKey = (a,b) => a < b ? `${a}_${b}` : `${b}_${a}`;
+
+  let attempts = 0;
+  const maxAttempts = 5000;
+
+  while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
+    attempts++;
+
+    const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
+    if (needers.length < 2) break;
+
+    const a = needers[crypto.randomInt(0, needers.length)];
+
+    let b;
+    let tries = 0;
+
+    while (tries < 20) {
+      b = needers[crypto.randomInt(0, needers.length)];
+      if (b !== a) break;
+      tries++;
     }
 
-    // Caso general: generamos emparejamientos intentando completar 4 por equipo
-    // Estrategia: elegir (a,b) aleatorio entre equipos que aún no llegaron a 4,
-    // evitando repetir el mismo cruce si se puede.
-    const maxAttempts = 5000;
-    let attempts = 0;
+    if (!b || b === a) continue;
 
-    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-        attempts++;
+    const pk = pairKey(a,b);
+    const pc = pairCount.get(pk) || 0;
 
-        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-        if (needers.length < 2) break;
+    if (pc > 0) continue;
 
-        const a = needers[crypto.randomInt(0, needers.length)];
-        let b;
-        let tries = 0;
+    if (playedCount.get(a) >= 4) continue;
+    if (playedCount.get(b) >= 4) continue;
 
-        // probamos buscar un rival que también necesite y que minimice repetición
-        while (tries < 20) {
-            b = needers[crypto.randomInt(0, needers.length)];
-            if (b !== a) break;
-            tries++;
-        }
-        if (!b || b === a) continue;
+    matchups.push([a,b]);
 
-        const pk = pairKey(a, b);
-        const pc = pairCount.get(pk) || 0;
+    playedCount.set(a, playedCount.get(a)+1);
+    playedCount.set(b, playedCount.get(b)+1);
 
-        // Evitar repetir si aún hay combinaciones sin repetir disponibles
-        // pero si n<5, inevitablemente repetimos: permitimos repeticiones.
-        if (n >= 5 && pc > 0) continue;
+    pairCount.set(pk, pc+1);
+  }
 
-        // Evitar que alguno pase de 4
-        if ((playedCount.get(a) || 0) >= 4) continue;
-        if ((playedCount.get(b) || 0) >= 4) continue;
+  // fallback si faltan
+  attempts = 0;
+  while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
+    attempts++;
 
-        matchups.push([a, b]);
-        playedCount.set(a, (playedCount.get(a) || 0) + 1);
-        playedCount.set(b, (playedCount.get(b) || 0) + 1);
-        pairCount.set(pk, pc + 1);
-    }
+    const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
+    if (needers.length < 2) break;
 
-    // Si no llegamos, completamos permitiendo repeticiones sin tanta regla (n<5 suele caer acá)
-    attempts = 0;
-    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-        attempts++;
-        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-        if (needers.length < 2) break;
+    const a = needers[crypto.randomInt(0, needers.length)];
+    const b = needers.filter(x => x !== a)[crypto.randomInt(0, needers.length-1)];
 
-        const a = needers[crypto.randomInt(0, needers.length)];
-        const b = needers.filter(x => x !== a)[crypto.randomInt(0, needers.length - 1)];
-        if (!b) continue;
+    matchups.push([a,b]);
 
-        matchups.push([a, b]);
-        playedCount.set(a, (playedCount.get(a) || 0) + 1);
-        playedCount.set(b, (playedCount.get(b) || 0) + 1);
-    }
+    playedCount.set(a, playedCount.get(a)+1);
+    playedCount.set(b, playedCount.get(b)+1);
+  }
 
-    // sanity: si alguien quedó <4 (debería ser raro), log y seguimos
-    for (const id of ids) {
-        const c = playedCount.get(id) || 0;
-        if (c !== 4) {
-            console.warn(`⚠️  category=${category} team=${id} quedó con ${c} partidos (objetivo 4).`);
-        }
-    }
-
-    return matchups;
+  return matchups;
 }
 
 function assignDays(matchups, teamsById) {
@@ -647,6 +656,7 @@ async function main() {
         );
 
         const matchups = buildRegularMatchesForCategory(teams, category); // [[a,b]...]
+        console.log("Category", category, "matches:", matchups.length)
         const teamsById = new Map(teams.map(t => [t.teamId, t]));
         const withDays = assignDays(matchups, teamsById); // [{a,b,day}...]
 
