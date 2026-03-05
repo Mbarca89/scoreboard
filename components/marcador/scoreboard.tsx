@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import useSWR from "swr"
 import type { MatchLiveState, TimerMode } from "@/lib/types"
@@ -110,11 +110,58 @@ interface ScoreboardProps {
 }
 
 export function Scoreboard({ eventId }: ScoreboardProps) {
+  const [now, setNow] = useState(() => Date.now())
+
   const { data } = useSWR<MatchLiveState>(
     `/api/live-state?eventId=${eventId}`,
     fetcher,
-    { refreshInterval: 500 }
+    { refreshInterval: 1000 }
   )
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setNow(Date.now())
+    }, 250)
+
+    return () => window.clearInterval(id)
+  }, [])
+
+  const displayedTimers = useMemo(() => {
+    if (!data) {
+      return { gameTimerSec: 0, breakTimerSec: 0 }
+    }
+
+    const updatedAtMs = Date.parse(data.updated_at)
+    const elapsedSeconds = Number.isNaN(updatedAtMs)
+      ? 0
+      : Math.max(0, Math.floor((now - updatedAtMs) / 1000))
+
+    if (!data.timer_running) {
+      return {
+        gameTimerSec: data.game_timer_sec,
+        breakTimerSec: data.break_timer_sec,
+      }
+    }
+
+    if (data.timer_mode === "GAME") {
+      return {
+        gameTimerSec: Math.max(0, data.game_timer_sec - elapsedSeconds),
+        breakTimerSec: data.break_timer_sec,
+      }
+    }
+
+    if (data.timer_mode === "BREAK") {
+      return {
+        gameTimerSec: data.game_timer_sec,
+        breakTimerSec: Math.max(0, data.break_timer_sec - elapsedSeconds),
+      }
+    }
+
+    return {
+      gameTimerSec: data.game_timer_sec,
+      breakTimerSec: data.break_timer_sec,
+    }
+  }, [data, now])
 
   if (!data || !data.active_match_id) {
     return (
@@ -148,7 +195,7 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
             Break - Tiempo para entrar
           </span>
           <span className="font-mono text-8xl font-black tracking-tight text-amber-300 md:text-[10rem]">
-            {formatTime(data.break_timer_sec)}
+            {formatTime(displayedTimers.breakTimerSec)}
           </span>
         </div>
       )}
@@ -219,14 +266,14 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
               }`}
             style={!isBreak ? { textShadow: "0 0 20px currentColor" } : undefined}
           >
-            {formatTime(data.game_timer_sec)}
+            {formatTime(displayedTimers.gameTimerSec)}
           </span>
           <span className={`text-sm font-black uppercase tracking-[0.4em] ${style.text}`}>
             {getModeLabel(mode)}
           </span>
-          {!isBreak && data.break_timer_sec > 0 && (
+          {!isBreak && displayedTimers.breakTimerSec > 0 && (
             <span className="mt-1 font-mono text-lg font-bold text-amber-300/40">
-              Break: {formatTime(data.break_timer_sec)}
+              Break: {formatTime(displayedTimers.breakTimerSec)}
             </span>
           )}
         </div>
