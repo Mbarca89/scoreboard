@@ -1,7 +1,7 @@
 "use client"
 
 import useSWR from "swr"
-import type { Match } from "@/lib/types"
+import type { FixtureBlock, Match } from "@/lib/types"
 import { buildStandings } from "@/lib/standings"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -15,18 +15,19 @@ export function Standings({ eventId }: StandingsProps) {
     refreshInterval: 5000,
   })
 
-  if (!matches) {
+  const { data: blocks } = useSWR<FixtureBlock[]>(`/api/blocks?eventId=${eventId}`, fetcher, {
+    refreshInterval: 5000,
+  })
+
+  if (!matches || !blocks) {
     return <p className="text-sm text-muted-foreground">Cargando scores...</p>
   }
 
-  const groups = buildStandings(matches)
+  const groupByBlockId = Object.fromEntries(blocks.map((block) => [block.block_id, block.group_id]))
+  const groups = buildStandings(matches, groupByBlockId)
 
   if (groups.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No hay partidos finalizados con grupo para calcular puntajes.
-      </p>
-    )
+    return <p className="text-sm text-muted-foreground">No hay partidos cargados para este evento.</p>
   }
 
   return (
@@ -61,7 +62,7 @@ export function Standings({ eventId }: StandingsProps) {
                     <td className="px-2 py-2 font-mono text-xs text-muted-foreground">{idx + 1}</td>
                     <td className="px-2 py-2 font-semibold text-foreground">{team.teamName}</td>
                     <td className="px-2 py-2 text-center font-mono text-xs text-muted-foreground">
-                      {team.matchPoints.join(" • ") || "-"}
+                      {team.matchPoints.map((point) => (typeof point === "number" ? point : "P")).join(" • ") || "-"}
                     </td>
                     <td className="px-2 py-2 text-center font-mono">{team.played}</td>
                     <td className="px-2 py-2 text-center font-mono">{team.won}</td>
@@ -69,7 +70,11 @@ export function Standings({ eventId }: StandingsProps) {
                     <td className="px-2 py-2 text-center font-mono">{team.lost}</td>
                     <td className="px-2 py-2 text-center font-mono">{team.goalsFor}</td>
                     <td className="px-2 py-2 text-center font-mono">{team.goalsAgainst}</td>
-                    <td className={`px-2 py-2 text-center font-mono ${team.goalDiff >= 0 ? "text-primary" : "text-destructive"}`}>
+                    <td
+                      className={`px-2 py-2 text-center font-mono ${
+                        team.goalDiff >= 0 ? "text-primary" : "text-destructive"
+                      }`}
+                    >
                       {team.goalDiff > 0 ? `+${team.goalDiff}` : team.goalDiff}
                     </td>
                     <td className="px-2 py-2 text-center font-mono text-base font-bold text-foreground">{team.totalPoints}</td>

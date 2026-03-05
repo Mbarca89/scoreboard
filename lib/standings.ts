@@ -13,7 +13,7 @@ export interface TeamStanding {
   goalsAgainst: number
   goalDiff: number
   totalPoints: number
-  matchPoints: number[]
+  matchPoints: Array<number | "P">
 }
 
 export interface GroupStandings {
@@ -27,6 +27,30 @@ const POINTS = {
   DRAW: 1,
   LOSS: 0,
 }
+
+function normalizeGroupId(groupId: string | null | undefined): string {
+  const normalized = groupId?.trim()
+  return normalized && normalized.length > 0 ? normalized : "Sin grupo"
+}
+
+function normalizeBoolean(value: unknown): boolean {
+  if (typeof value === "boolean") return value
+  if (typeof value === "number") return value === 1
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase()
+    return normalized === "true" || normalized === "t" || normalized === "1"
+  }
+  return false
+}
+
+function shouldCountMatch(match: Match): boolean {
+  if (normalizeBoolean(match.is_finished)) return true
+  if (match.finished_at) return true
+  if (match.winner_team_id) return true
+  if (match.result_type) return true
+  return false
+}
+
 function ensureTeam(
   table: Map<string, TeamStanding>,
   key: string,
@@ -49,16 +73,16 @@ function ensureTeam(
   return table.get(key)!
 }
 
-export function buildStandings(matches: Match[]): GroupStandings[] {
+export function buildStandings(
+  matches: Match[],
+  groupByBlockId: Record<string, string | null | undefined> = {}
+): GroupStandings[] {
   const groupMap = new Map<string, Map<string, TeamStanding>>()
 
   for (const match of matches) {
-
-    if (!match.group_id) continue
-    if (!match.is_finished) continue
-
     const category = match.category
-    const groupId = match.group_id
+    const resolvedGroupId = match.group_id ?? groupByBlockId[match.block_id] ?? null
+    const groupId = normalizeGroupId(resolvedGroupId)
     const groupKey = `${category}::${groupId}`
 
     if (!groupMap.has(groupKey)) {
@@ -78,6 +102,12 @@ export function buildStandings(matches: Match[]): GroupStandings[] {
       groupId,
       category,
     })
+
+    if (!shouldCountMatch(match)) {
+      left.matchPoints.push("P")
+      right.matchPoints.push("P")
+      continue
+    }
 
     left.played += 1
     right.played += 1
