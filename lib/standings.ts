@@ -13,7 +13,7 @@ export interface TeamStanding {
   goalsAgainst: number
   goalDiff: number
   totalPoints: number
-  matchPoints: Array<number | "P">
+  matchResults: string[]
 }
 
 export interface GroupStandings {
@@ -43,6 +43,16 @@ function normalizeBoolean(value: unknown): boolean {
   return false
 }
 
+
+function isByeMatch(match: Match): boolean {
+  const leftId = String(match.left_team_id ?? "").trim().toUpperCase()
+  const rightId = String(match.right_team_id ?? "").trim().toUpperCase()
+  const leftName = String(match.left_team_name ?? "").trim().toUpperCase()
+  const rightName = String(match.right_team_name ?? "").trim().toUpperCase()
+
+  return leftId === "BYE" || rightId === "BYE" || leftName === "BYE" || rightName === "BYE"
+}
+
 function shouldCountMatch(match: Match): boolean {
   if (normalizeBoolean(match.is_finished)) return true
   if (match.finished_at) return true
@@ -67,7 +77,7 @@ function ensureTeam(
       goalsAgainst: 0,
       goalDiff: 0,
       totalPoints: 0,
-      matchPoints: [],
+      matchResults: [],
     })
   }
   return table.get(key)!
@@ -80,6 +90,8 @@ export function buildStandings(
   const groupMap = new Map<string, Map<string, TeamStanding>>()
 
   for (const match of matches) {
+    if (isByeMatch(match)) continue
+
     const category = match.category
     const resolvedGroupId = match.group_id ?? groupByBlockId[match.block_id] ?? null
     const groupId = normalizeGroupId(resolvedGroupId)
@@ -104,8 +116,8 @@ export function buildStandings(
     })
 
     if (!shouldCountMatch(match)) {
-      left.matchPoints.push("P")
-      right.matchPoints.push("P")
+      left.matchResults.push("P")
+      right.matchResults.push("P")
       continue
     }
 
@@ -122,22 +134,22 @@ export function buildStandings(
       right.lost += 1
       left.totalPoints += POINTS.WIN
       right.totalPoints += POINTS.LOSS
-      left.matchPoints.push(POINTS.WIN)
-      right.matchPoints.push(POINTS.LOSS)
+      left.matchResults.push(`${match.left_score}-${match.right_score}`)
+      right.matchResults.push(`${match.right_score}-${match.left_score}`)
     } else if (match.right_score > match.left_score) {
       right.won += 1
       left.lost += 1
       right.totalPoints += POINTS.WIN
       left.totalPoints += POINTS.LOSS
-      right.matchPoints.push(POINTS.WIN)
-      left.matchPoints.push(POINTS.LOSS)
+      right.matchResults.push(`${match.right_score}-${match.left_score}`)
+      left.matchResults.push(`${match.left_score}-${match.right_score}`)
     } else {
       left.drawn += 1
       right.drawn += 1
       left.totalPoints += POINTS.DRAW
       right.totalPoints += POINTS.DRAW
-      left.matchPoints.push(POINTS.DRAW)
-      right.matchPoints.push(POINTS.DRAW)
+      left.matchResults.push(`${match.left_score}-${match.right_score}`)
+      right.matchResults.push(`${match.right_score}-${match.left_score}`)
     }
   }
 
