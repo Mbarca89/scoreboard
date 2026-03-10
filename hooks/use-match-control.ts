@@ -67,7 +67,7 @@ function resolvePostPoint(
       singleMatchMode: true,
       [otherMatchKey]: {
         ...otherMatch!,
-        breakTimerSec: rules.singleMatchBreakTimeSec,
+        breakTimerSec: getSingleMatchBreakStartSec(rules.singleMatchBreakTimeSec),
         timerMode: "BREAK" as TimerMode,
       },
     }
@@ -79,7 +79,7 @@ function resolvePostPoint(
       ...prev,
       [matchKey]: {
         ...updatedMatch,
-        breakTimerSec: rules.singleMatchBreakTimeSec,
+        breakTimerSec: getSingleMatchBreakStartSec(rules.singleMatchBreakTimeSec),
         timerMode: "BREAK" as TimerMode,
       },
       pendingDecision: null,
@@ -99,6 +99,11 @@ function resolvePostPoint(
       timerMode: "BREAK" as TimerMode,
     },
   }
+}
+
+
+function getSingleMatchBreakStartSec(seconds: number): number {
+  return seconds === 120 ? 121 : seconds
 }
 
 export function useMatchControl(eventId: string) {
@@ -484,9 +489,16 @@ export function useMatchControl(eventId: string) {
   const handleConcede = useCallback(
     (side: "left" | "right") => {
       prime()
-      emitOnce(`ui:concede:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
+      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${Date.now()}`
+      emitOnce(concedeAudioKey, () =>
         playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
       )
+
+      setTimeout(() => {
+        emitOnce(`${concedeAudioKey}:approved`, () =>
+          playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
+        )
+      }, 1100)
 
       setState((prev) => {
         const slot = prev.activeSlot
@@ -677,7 +689,7 @@ export function useMatchControl(eventId: string) {
         const rules = getRulesForCategory(match.category)
         return {
           ...prev,
-          [matchKey]: { ...match, breakTimerSec: rules.singleMatchBreakTimeSec, timerMode: "BREAK" as TimerMode },
+          [matchKey]: { ...match, breakTimerSec: getSingleMatchBreakStartSec(rules.singleMatchBreakTimeSec), timerMode: "BREAK" as TimerMode },
           pendingDecision: null,
           singleMatchMode: true,
         }
