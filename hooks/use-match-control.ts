@@ -145,6 +145,14 @@ export function useMatchControl(eventId: string) {
   // break 0: beep largo distinto + luego game-start.wav
   const BEEP_BREAK_ZERO = { freq: 700, duration: 0.8, count: 1, silence: 0, type: "sine" as const, gain: 0.28 }
 
+  const scheduleGameFinished = useCallback((matchId: string) => {
+    setTimeout(() => {
+      emitOnce(`ui:game-finished:${matchId}`, () =>
+        playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
+      )
+    }, 1500)
+  }, [emitOnce, playSequence])
+
   // Sync live state to DB for polling
   const syncLiveState = useCallback(async (s: ControlState) => {
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
@@ -498,7 +506,7 @@ export function useMatchControl(eventId: string) {
         emitOnce(`${concedeAudioKey}:approved`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
         )
-      }, 1100)
+      }, 700)
 
       setState((prev) => {
         const slot = prev.activeSlot
@@ -529,9 +537,7 @@ export function useMatchControl(eventId: string) {
         const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
         if (isFinished) {
-          setTimeout(() => {
-            playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
-          }, 1500)
+          scheduleGameFinished(match.matchId)
         } else if (result.activeSlot !== prev.activeSlot) {
           emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
             playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
@@ -541,7 +547,7 @@ export function useMatchControl(eventId: string) {
         return result
       })
     },
-    [prime, emitOnce, playSequence, saveScore, state.activeSlot, state.blockId]
+    [prime, emitOnce, playSequence, scheduleGameFinished, saveScore, state.activeSlot, state.blockId]
   )
 
   // Approve point (2 beeps + point-approved.wav)
@@ -582,9 +588,7 @@ export function useMatchControl(eventId: string) {
       const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
       if (isFinished) {
-        setTimeout(() => {
-          playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
-        }, 1500)
+        scheduleGameFinished(match.matchId)
       } else if (result.activeSlot !== prev.activeSlot) {
         emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
@@ -593,7 +597,7 @@ export function useMatchControl(eventId: string) {
 
       return result
     })
-  }, [prime, emitOnce, playSequence, saveScore, state.activeSlot, state.blockId])
+  }, [prime, emitOnce, playSequence, scheduleGameFinished, saveScore, state.activeSlot, state.blockId])
 
   // Reverse point (2 beeps + reverse-point.wav)
   const reversePoint = useCallback(() => {
@@ -633,9 +637,7 @@ export function useMatchControl(eventId: string) {
       const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
 
       if (isFinished) {
-        setTimeout(() => {
-          playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
-        }, 1500)
+        scheduleGameFinished(match.matchId)
       } else if (result.activeSlot !== prev.activeSlot) {
         emitOnce(`switch:${prev.activeSlot}->${result.activeSlot}:${prev.blockId}:${updatedMatch.matchId}`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
@@ -644,7 +646,7 @@ export function useMatchControl(eventId: string) {
 
       return result
     })
-  }, [prime, emitOnce, playSequence, saveScore, state.activeSlot, state.blockId])
+  }, [prime, emitOnce, playSequence, scheduleGameFinished, saveScore, state.activeSlot, state.blockId])
 
   // No point:
   // - si viene de fromStop => reanudar GAME con beep largo + game-start (NO no-points.wav)
