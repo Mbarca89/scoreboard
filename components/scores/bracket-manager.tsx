@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import type { AXLCategory, Match } from "@/lib/types"
+import { toast } from "@/hooks/use-toast"
 
 const CATEGORIES: AXLCategory[] = ["5v5 D3/D4", "3v3 D4/D5", "3v3 D6"]
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -36,7 +37,6 @@ export function BracketManager({ eventId }: { eventId: string }) {
 
   const [category, setCategory] = useState<AXLCategory>("5v5 D3/D4")
   const [stage, setStage] = useState<Stage>("SEMI")
-  const [syncToken, setSyncToken] = useState("")
   const [loading, setLoading] = useState(false)
 
   const [form, setForm] = useState({
@@ -49,16 +49,17 @@ export function BracketManager({ eventId }: { eventId: string }) {
   })
 
   const teams = useMemo(() => {
-    if (!matches) return []
+    if (!matches) return [{ id: "BYE", name: "BYE", logoKey: null }]
+
     const map = new Map<string, TeamOption>()
     for (const m of matches) {
       if (m.category !== category) continue
       map.set(m.left_team_id, { id: m.left_team_id, name: m.left_team_name, logoKey: m.left_team_logo_path })
-      if (m.right_team_id !== "BYE") {
-        map.set(m.right_team_id, { id: m.right_team_id, name: m.right_team_name, logoKey: m.right_team_logo_path })
-      }
+      map.set(m.right_team_id, { id: m.right_team_id, name: m.right_team_name, logoKey: m.right_team_logo_path })
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+
+    map.set("BYE", { id: "BYE", name: "BYE", logoKey: null })
+    return Array.from(map.values()).sort((a, b) => (a.id === "BYE" ? 1 : b.id === "BYE" ? -1 : a.name.localeCompare(b.name)))
   }, [matches, category])
 
   const byId = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams])
@@ -66,6 +67,9 @@ export function BracketManager({ eventId }: { eventId: string }) {
   const saveBracket = async () => {
     setLoading(true)
     try {
+      const aBye = form.aBye || form.aRight === "BYE"
+      const bBye = form.bBye || form.bRight === "BYE"
+
       const payload = {
         eventId,
         category,
@@ -75,19 +79,19 @@ export function BracketManager({ eventId }: { eventId: string }) {
             leftTeamId: form.aLeft,
             leftTeamName: byId[form.aLeft]?.name,
             leftTeamLogoKey: byId[form.aLeft]?.logoKey,
-            rightTeamId: form.aBye ? undefined : form.aRight,
-            rightTeamName: form.aBye ? undefined : byId[form.aRight]?.name,
-            rightTeamLogoKey: form.aBye ? undefined : byId[form.aRight]?.logoKey,
-            isBye: form.aBye,
+            rightTeamId: aBye ? "BYE" : form.aRight,
+            rightTeamName: aBye ? "BYE" : byId[form.aRight]?.name,
+            rightTeamLogoKey: aBye ? null : byId[form.aRight]?.logoKey,
+            isBye: aBye,
           },
           {
             leftTeamId: form.bLeft,
             leftTeamName: byId[form.bLeft]?.name,
             leftTeamLogoKey: byId[form.bLeft]?.logoKey,
-            rightTeamId: form.bBye ? undefined : form.bRight,
-            rightTeamName: form.bBye ? undefined : byId[form.bRight]?.name,
-            rightTeamLogoKey: form.bBye ? undefined : byId[form.bRight]?.logoKey,
-            isBye: form.bBye,
+            rightTeamId: bBye ? "BYE" : form.bRight,
+            rightTeamName: bBye ? "BYE" : byId[form.bRight]?.name,
+            rightTeamLogoKey: bBye ? null : byId[form.bRight]?.logoKey,
+            isBye: bBye,
           },
         ],
       }
@@ -99,35 +103,25 @@ export function BracketManager({ eventId }: { eventId: string }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Error guardando bloque")
-      alert(`Bloque ${stage} creado: ${data.blockId}`)
+
+      toast({
+        title: `Bloque ${stage} creado`,
+        description: `ID: ${data.blockId}`,
+      })
       await mutate()
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Error")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const syncToDynamo = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch("/api/sync/dynamo/full", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId, syncToken }),
+      toast({
+        variant: "destructive",
+        title: "No se pudo crear el bloque",
+        description: err instanceof Error ? err.message : "Error desconocido",
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? "Error de sincronización")
-      alert(`Sync OK. Matches: ${data.matches}, FixtureBlocks: ${data.fixtureBlocks}`)
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Error")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <section className="mt-8 rounded-lg border border-border bg-card p-4 space-y-3">
+    <section className="mt-8 space-y-3 rounded-lg border border-border bg-card p-4">
       <h2 className="text-sm font-bold">Administrador de cruces (SEMI / FINAL)</h2>
 
       <div className="grid gap-2 md:grid-cols-3">
@@ -149,9 +143,9 @@ export function BracketManager({ eventId }: { eventId: string }) {
         const left = isA ? form.aLeft : form.bLeft
         const right = isA ? form.aRight : form.bRight
         return (
-          <div key={slot} className="rounded-md border border-border/70 p-2 space-y-2">
+          <div key={slot} className="space-y-2 rounded-md border border-border/70 p-2">
             <p className="text-xs font-semibold">Partido {slot}</p>
-            <TeamSelect value={left} onChange={(val) => setForm((f) => ({ ...f, [isA ? "aLeft" : "bLeft"]: val }))} teams={teams} />
+            <TeamSelect value={left} onChange={(val) => setForm((f) => ({ ...f, [isA ? "aLeft" : "bLeft"]: val }))} teams={teams.filter((t) => t.id !== "BYE")} />
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={bye} onChange={(e) => setForm((f) => ({ ...f, [isA ? "aBye" : "bBye"]: e.target.checked }))} />
               BYE (partido terminado automáticamente)
@@ -160,20 +154,6 @@ export function BracketManager({ eventId }: { eventId: string }) {
           </div>
         )
       })}
-
-      <div className="grid gap-2 md:grid-cols-[1fr_auto]">
-        <input
-          type="password"
-          placeholder="Sync token"
-          value={syncToken}
-          onChange={(e) => setSyncToken(e.target.value)}
-          className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-        />
-        <button disabled={loading || !syncToken} onClick={syncToDynamo} className="rounded-md border border-border px-3 py-1 text-xs font-semibold disabled:opacity-50">
-          Sync completo a Dynamo
-        </button>
-      </div>
-      <p className="text-[11px] text-muted-foreground">Este botón envía toda la data local del evento (matches + fixture_blocks) a tu Lambda de sincronización.</p>
     </section>
   )
 }

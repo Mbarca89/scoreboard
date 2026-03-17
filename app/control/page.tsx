@@ -5,6 +5,7 @@ import { TeamPanel } from "@/components/control/team-panel"
 import { TimerControl } from "@/components/control/timer-control"
 import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
+import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect } from "react"
 
@@ -109,6 +110,9 @@ function ControlBoard() {
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
+      <div className="flex items-center justify-end">
+        <DynamoSyncButton eventId={eventId} />
+      </div>
       {/* Main 3-column layout */}
       <div className="flex flex-1 gap-3">
         {/* Left team (physical) */}

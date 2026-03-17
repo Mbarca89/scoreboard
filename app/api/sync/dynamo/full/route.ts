@@ -39,18 +39,18 @@ interface BlockRow {
 }
 
 export async function POST(req: NextRequest) {
-  const { eventId, syncToken } = await req.json()
+  const { eventId } = await req.json()
 
-  if (!eventId || !syncToken) {
-    return NextResponse.json({ error: "eventId and syncToken are required" }, { status: 400 })
+  if (!eventId) {
+    return NextResponse.json({ error: "eventId is required" }, { status: 400 })
   }
 
-  const expected = process.env.DYNAMO_SYNC_TOKEN
-  if (!expected || syncToken !== expected) {
-    return NextResponse.json({ error: "invalid sync token" }, { status: 401 })
-  }
-
+  const syncToken = process.env.DYNAMO_SYNC_TOKEN
   const lambdaUrl = process.env.DYNAMO_SYNC_LAMBDA_URL
+
+  if (!syncToken) {
+    return NextResponse.json({ error: "DYNAMO_SYNC_TOKEN is not configured" }, { status: 500 })
+  }
   if (!lambdaUrl) {
     return NextResponse.json({ error: "DYNAMO_SYNC_LAMBDA_URL is not configured" }, { status: 500 })
   }
