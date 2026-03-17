@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import useSWR from "swr"
 import type { AXLCategory, Match } from "@/lib/types"
 
-const CATEGORIES: AXLCategory[] = ["5v5 D3/D4", "3v3 D5", "3v3 D6"]
+const CATEGORIES: AXLCategory[] = ["5v5 D3/D4", "3v3 D4/D5", "3v3 D6"]
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 type Stage = "SEMI" | "FINAL"
