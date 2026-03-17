@@ -49,17 +49,18 @@ export function BracketManager({ eventId }: { eventId: string }) {
   })
 
   const teams = useMemo(() => {
-    if (!matches) return [{ id: "BYE", name: "BYE", logoKey: null }]
+    if (!matches) return []
 
     const map = new Map<string, TeamOption>()
     for (const m of matches) {
       if (m.category !== category) continue
       map.set(m.left_team_id, { id: m.left_team_id, name: m.left_team_name, logoKey: m.left_team_logo_path })
-      map.set(m.right_team_id, { id: m.right_team_id, name: m.right_team_name, logoKey: m.right_team_logo_path })
+      if (m.right_team_id !== "BYE") {
+        map.set(m.right_team_id, { id: m.right_team_id, name: m.right_team_name, logoKey: m.right_team_logo_path })
+      }
     }
 
-    map.set("BYE", { id: "BYE", name: "BYE", logoKey: null })
-    return Array.from(map.values()).sort((a, b) => (a.id === "BYE" ? 1 : b.id === "BYE" ? -1 : a.name.localeCompare(b.name)))
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
   }, [matches, category])
 
   const byId = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams])
@@ -142,15 +143,30 @@ export function BracketManager({ eventId }: { eventId: string }) {
         const bye = isA ? form.aBye : form.bBye
         const left = isA ? form.aLeft : form.bLeft
         const right = isA ? form.aRight : form.bRight
+        const rightKey = isA ? "aRight" : "bRight"
+        const byeKey = isA ? "aBye" : "bBye"
         return (
           <div key={slot} className="space-y-2 rounded-md border border-border/70 p-2">
             <p className="text-xs font-semibold">Partido {slot}</p>
-            <TeamSelect value={left} onChange={(val) => setForm((f) => ({ ...f, [isA ? "aLeft" : "bLeft"]: val }))} teams={teams.filter((t) => t.id !== "BYE")} />
+            <TeamSelect value={left} onChange={(val) => setForm((f) => ({ ...f, [isA ? "aLeft" : "bLeft"]: val }))} teams={teams} />
             <label className="flex items-center gap-2 text-xs">
-              <input type="checkbox" checked={bye} onChange={(e) => setForm((f) => ({ ...f, [isA ? "aBye" : "bBye"]: e.target.checked }))} />
+              <input
+                type="checkbox"
+                checked={bye}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    [byeKey]: e.target.checked,
+                    [rightKey]: e.target.checked ? "BYE" : "",
+                  }))
+                }
+              />
               BYE (partido terminado automáticamente)
             </label>
-            <TeamSelect value={right} disabled={bye} onChange={(val) => setForm((f) => ({ ...f, [isA ? "aRight" : "bRight"]: val }))} teams={teams} />
+            <div className="space-y-1">
+              <TeamSelect value={right} disabled={bye} onChange={(val) => setForm((f) => ({ ...f, [rightKey]: val }))} teams={teams} />
+              {bye && <p className="text-[11px] text-muted-foreground">Partido bloqueado como BYE (se completa automáticamente).</p>}
+            </div>
           </div>
         )
       })}
