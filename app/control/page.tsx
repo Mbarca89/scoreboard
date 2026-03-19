@@ -65,13 +65,15 @@ function ControlBoard() {
     handleBase(toDataSide("left"))
   }, [handleBase, toDataSide])
 
+  // Concede buttons are physical pit buttons and stay with the same team
+  // regardless of visual side swapping.
   const handleLeftConcede = useCallback(() => {
-    handleConcede(toDataSide("left"))
-  }, [handleConcede, toDataSide])
+    handleConcede("left")
+  }, [handleConcede])
 
   const handleRightConcede = useCallback(() => {
-    handleConcede(toDataSide("right"))
-  }, [handleConcede, toDataSide])
+    handleConcede("right")
+  }, [handleConcede])
 
   const handleRightBase = useCallback(() => {
     handleBase(toDataSide("right"))
