@@ -5,8 +5,9 @@ import { TeamPanel } from "@/components/control/team-panel"
 import { TimerControl } from "@/components/control/timer-control"
 import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
+import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
+import { Suspense, useCallback, useEffect } from "react"
 
 const EVENT_ID = "axl-2026-fecha-1"
 
@@ -60,8 +61,60 @@ function ControlBoard() {
       })()
     : ""
 
+  const handleLeftBase = useCallback(() => {
+    handleBase(toDataSide("left"))
+  }, [handleBase, toDataSide])
+
+  // Concede buttons are physical pit buttons and stay with the same team
+  // regardless of visual side swapping.
+  const handleLeftConcede = useCallback(() => {
+    handleConcede("left")
+  }, [handleConcede])
+
+  const handleRightConcede = useCallback(() => {
+    handleConcede("right")
+  }, [handleConcede])
+
+  const handleRightBase = useCallback(() => {
+    handleBase(toDataSide("right"))
+  }, [handleBase, toDataSide])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target
+      if (target instanceof HTMLElement) {
+        const tag = target.tagName.toLowerCase()
+        if (target.isContentEditable || tag === "input" || tag === "textarea" || tag === "select") {
+          return
+        }
+      }
+
+      const key = event.key.toLowerCase()
+
+      if (key === "q") {
+        event.preventDefault()
+        handleLeftBase()
+      } else if (key === "w") {
+        event.preventDefault()
+        handleLeftConcede()
+      } else if (key === "e") {
+        event.preventDefault()
+        handleRightConcede()
+      } else if (key === "r") {
+        event.preventDefault()
+        handleRightBase()
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [handleLeftBase, handleLeftConcede, handleRightConcede, handleRightBase])
+
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
+      <div className="flex items-center justify-end">
+        <DynamoSyncButton eventId={eventId} />
+      </div>
       {/* Main 3-column layout */}
       <div className="flex flex-1 gap-3">
         {/* Left team (physical) */}
@@ -70,9 +123,9 @@ function ControlBoard() {
           team={physLeftTeam}
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("left"))}
+          onBase={handleLeftBase}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("left"))}
-          onConcede={() => handleConcede(toDataSide("left"))}
+          onConcede={handleLeftConcede}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
@@ -127,9 +180,9 @@ function ControlBoard() {
           team={physRightTeam}
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("right"))}
+          onBase={handleRightBase}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("right"))}
-          onConcede={() => handleConcede(toDataSide("right"))}
+          onConcede={handleRightConcede}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
