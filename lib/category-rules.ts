@@ -14,7 +14,7 @@ export const CATEGORY_RULES: Record<AXLCategory, CategoryRule> = {
     breakTimeSec: 60,
     singleMatchBreakTimeSec: 2 * 60,
   },
-  "3v3 D5": {
+  "3v3 D4/D5": {
     maxPoints: 3,
     gameTimeSec: 5 * 60,
     breakTimeSec: 60,

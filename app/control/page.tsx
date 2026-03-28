@@ -5,6 +5,7 @@ import { TeamPanel } from "@/components/control/team-panel"
 import { TimerControl } from "@/components/control/timer-control"
 import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
+import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useState } from "react"
 
@@ -193,9 +194,9 @@ function ControlBoard() {
           team={physLeftTeam}
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("left"))}
+          onBase={handleLeftBase}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("left"))}
-          onConcede={() => handleConcede(toDataSide("left"))}
+          onConcede={handleLeftConcede}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
@@ -250,9 +251,9 @@ function ControlBoard() {
           team={physRightTeam}
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("right"))}
+          onBase={handleRightBase}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("right"))}
-          onConcede={() => handleConcede(toDataSide("right"))}
+          onConcede={handleRightConcede}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
