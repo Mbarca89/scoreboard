@@ -194,9 +194,9 @@ function ControlBoard() {
           team={physLeftTeam}
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={handleLeftBase}
+          onBase={()=>handleBase("left")}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("left"))}
-          onConcede={handleLeftConcede}
+          onConcede={()=>handleSharedSideButton("left")}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
@@ -251,9 +251,9 @@ function ControlBoard() {
           team={physRightTeam}
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={handleRightBase}
+          onBase={()=>handleBase("right")}
           onTimeout={() => useTimeout(state.activeSlot, toDataSide("right"))}
-          onConcede={handleRightConcede}
+          onConcede={()=>handleSharedSideButton("right")}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
