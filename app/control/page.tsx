@@ -5,6 +5,7 @@ import { TeamPanel } from "@/components/control/team-panel"
 import { TimerControl } from "@/components/control/timer-control"
 import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
+import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useState } from "react"
 

@@ -1,6 +1,6 @@
 /* ── Enums ─────────────────────────────────────────── */
 
-export type AXLCategory = "5v5 D3/D4" | "3v3 D5" | "3v3 D6"
+export type AXLCategory = "5v5 D3/D4" | "3v3 D4/D5" | "3v3 D6"
 export type AXLSlot = "A" | "B"
 export type AXLBlockStatus = "SCHEDULED" | "IN_PROGRESS" | "DONE"
 export type AXLMatchResult = "LEFT_WIN" | "RIGHT_WIN" | "DRAW"

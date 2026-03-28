@@ -5,6 +5,7 @@ import type { FixtureBlock, Match } from "@/lib/types"
 import { MatchCard } from "./match-card"
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
+const STAGE_ORDER = ["GROUP", "SEMI", "FINAL", "BRACKET", "QUARTER"] as const
 
 interface BlockListProps {
   eventId: string

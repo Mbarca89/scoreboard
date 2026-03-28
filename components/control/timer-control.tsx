@@ -229,6 +229,24 @@ export function TimerControl({
         >
           1 min
         </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onSetBreak(121)}
+          disabled={isGame || hasPendingDecision}
+          className="text-xs"
+        >
+          2 min
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onSetBreak(300)}
+          disabled={isGame || hasPendingDecision}
+          className="text-xs"
+        >
+          5 min
+        </Button>
       </div>
 
       {/* Campo Activo */}
