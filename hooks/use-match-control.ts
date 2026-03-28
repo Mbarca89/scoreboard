@@ -226,7 +226,6 @@ export function useMatchControl(eventId: string) {
   // Load matches for a block
   const loadBlock = useCallback(
     async (blockId: string) => {
-      console.log("Obteniendo bloque:", blockId)
 
       const url =
         `/api/matches?eventId=${encodeURIComponent(eventId)}` +

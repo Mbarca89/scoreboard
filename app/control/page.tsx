@@ -127,7 +127,7 @@ function ControlBoard() {
 
       const onButtonEvent = (payload: unknown) => {
         if (!payload || typeof payload !== "object") return
-
+        console.log(payload)
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
         if (typeof maybeButtonId !== "number") return
 
@@ -154,7 +154,7 @@ function ControlBoard() {
       socket.on("connect", onConnect)
       socket.on("disconnect", onDisconnect)
       socket.on("connect_error", onConnectError)
-      socket.on("button-press", onButtonEvent)
+      socket.on("button_press", onButtonEvent)
       socket.on("button", onButtonEvent)
     }
 
