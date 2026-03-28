@@ -50,6 +50,7 @@ function ControlBoard() {
 
   const [socketConnected, setSocketConnected] = useState(false)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
+  const [socketError, setSocketError] = useState<string | null>(null)
 
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
@@ -104,15 +105,24 @@ function ControlBoard() {
 
       const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? window.location.origin
       socket = window.io(socketUrl, {
-        transports: ["websocket", "polling"],
+        transports: ["polling", "websocket"],
+        upgrade: true,
       })
 
       const onConnect = () => {
-        if (isMounted) setSocketConnected(true)
+        if (!isMounted) return
+        setSocketConnected(true)
+        setSocketError(null)
       }
 
       const onDisconnect = () => {
         if (isMounted) setSocketConnected(false)
+      }
+
+      const onConnectError = (error: unknown) => {
+        if (!isMounted) return
+        const message = error instanceof Error ? error.message : "error de conexión"
+        setSocketError(message)
       }
 
       const onButtonEvent = (payload: unknown) => {
@@ -143,6 +153,7 @@ function ControlBoard() {
 
       socket.on("connect", onConnect)
       socket.on("disconnect", onDisconnect)
+      socket.on("connect_error", onConnectError)
       socket.on("button-press", onButtonEvent)
       socket.on("button", onButtonEvent)
     }
@@ -179,6 +190,11 @@ function ControlBoard() {
         <span className="font-mono text-xs text-muted-foreground">
           {socketConnected ? "online" : "offline"}
         </span>
+        {socketError && (
+          <span className="max-w-[24rem] truncate font-mono text-[10px] text-destructive">
+            {socketError}
+          </span>
+        )}
         {lastButtonId !== null && (
           <span className="font-mono text-xs text-muted-foreground">
             btn:{lastButtonId}
@@ -194,9 +210,9 @@ function ControlBoard() {
           team={physLeftTeam}
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={()=>handleBase("left")}
-          onTimeout={() => useTimeout(state.activeSlot, toDataSide("left"))}
-          onConcede={()=>handleSharedSideButton("left")}
+          onBase={() => handleBase(toDataSide("left"))}
+          onTimeout={() => handleSharedSideButton("left")}
+          onConcede={() => handleSharedSideButton("left")}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
@@ -251,9 +267,9 @@ function ControlBoard() {
           team={physRightTeam}
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={()=>handleBase("right")}
-          onTimeout={() => useTimeout(state.activeSlot, toDataSide("right"))}
-          onConcede={()=>handleSharedSideButton("right")}
+          onBase={() => handleBase(toDataSide("right"))}
+          onTimeout={() => handleSharedSideButton("right")}
+          onConcede={() => handleSharedSideButton("right")}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
