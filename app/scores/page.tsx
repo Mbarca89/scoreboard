@@ -3,7 +3,6 @@
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Standings } from "@/components/scores/standings"
-import { BracketManager } from "@/components/scores/bracket-manager"
 
 function ScoresView() {
   const searchParams = useSearchParams()
@@ -18,7 +17,6 @@ function ScoresView() {
         </p>
       </header>
       <Standings eventId={eventId} />
-      <BracketManager eventId={eventId} />
     </div>
   )
 }
