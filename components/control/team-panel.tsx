@@ -40,8 +40,9 @@ export function TeamPanel({
   }
 
   const isFinished = match.isFinished
-  const isGameOrPaused = match.timerMode === "GAME" || isPaused
-  const canEditScore = match.timerMode === "IDLE" || match.timerMode === "PAUSED"
+  const isGame = match.timerMode === "GAME"
+  const isBreakTimeoutWindow = match.timerMode === "BREAK" && match.breakTimerSec > 11
+  const canEditScore = match.timerMode === "IDLE" || isPaused
 
   return (
     <div
@@ -107,7 +108,7 @@ export function TeamPanel({
           size="sm"
           className="w-full gap-2"
           onClick={onTimeout}
-          disabled={disabled || team.timeoutUsed || isFinished || !isActive}
+          disabled={disabled || team.timeoutUsed || isFinished || !isActive || !isBreakTimeoutWindow}
         >
           <Clock className="h-4 w-4" />
           {team.timeoutUsed ? "Timeout usado" : "Time Out"}
@@ -118,7 +119,7 @@ export function TeamPanel({
           size="sm"
           className="w-full gap-2 border-amber-600 text-amber-500 hover:bg-amber-600/10 hover:text-amber-400"
           onClick={onConcede}
-          disabled={disabled || isFinished || !isActive || !(isGameOrPaused)}
+          disabled={disabled || isFinished || !isActive || !isGame}
         >
           <Flag className="h-4 w-4" />
           Conceder
@@ -127,7 +128,7 @@ export function TeamPanel({
         <Button
           className="h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={onBase}
-          disabled={disabled || isFinished || !isActive || !(isGameOrPaused)}
+          disabled={disabled || isFinished || !isActive || !isGame}
         >
           <Siren className="mr-2 h-5 w-5" />
           BASE
