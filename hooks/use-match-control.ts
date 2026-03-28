@@ -143,7 +143,7 @@ export function useMatchControl(eventId: string) {
   const BEEP_BREAK_EACH_SEC = { freq: 1800, duration: 0.08, count: 1, silence: 0, type: "square" as const, gain: 0.22 }
 
   // break 0: beep largo distinto + luego game-start.wav
-  const BEEP_BREAK_ZERO = { freq: 700, duration: 0.8, count: 1, silence: 0, type: "sine" as const, gain: 0.28 }
+  const BEEP_BREAK_ZERO = { freq: 800, duration: 1, count: 1, silence: 0, type: "square" as const, gain: 0.28 }
 
   const scheduleGameFinished = useCallback((matchId: string) => {
     setTimeout(() => {
