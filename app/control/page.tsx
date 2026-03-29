@@ -127,7 +127,7 @@ function ControlBoard() {
 
       const onButtonEvent = (payload: unknown) => {
         if (!payload || typeof payload !== "object") return
-        console.log(payload)
+
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
         if (typeof maybeButtonId !== "number") return
 
