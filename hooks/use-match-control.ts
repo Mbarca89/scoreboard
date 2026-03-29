@@ -161,14 +161,6 @@ export function useMatchControl(eventId: string) {
     }, delayMs)
   }, [emitOnce, playSequence])
 
-  const scheduleSwitchAnnouncement = useCallback((fromSlot: AXLSlot, toSlot: AXLSlot, blockId: string, matchId: string, delayMs = 1400) => {
-    window.setTimeout(() => {
-      emitOnce(`switch:${fromSlot}->${toSlot}:${blockId}:${matchId}`, () =>
-        playSequence({ preBeeps: BEEP_2_QUICK, wav: "1-minute" })
-      )
-    }, delayMs)
-  }, [emitOnce, playSequence])
-
   // Sync live state to DB for polling
   const syncLiveState = useCallback(async (s: ControlState) => {
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
