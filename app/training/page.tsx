@@ -1,9 +1,10 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
+import { useAudio } from "@/hooks/use-audio"
 
-type TrainingMode = "IDLE" | "BREAK" | "GAME"
+type TrainingMode = "IDLE" | "READY_COUNTDOWN" | "GAME"
 
 type SocketConnection = {
   on: (event: string, cb: (...args: unknown[]) => void) => void
@@ -18,9 +19,13 @@ declare global {
 }
 
 const SOCKET_SCRIPT_SRC = "https://cdn.socket.io/4.7.5/socket.io.min.js"
-const GAME_TIME_SEC = 10 * 60
-const BREAK_TIME_SEC = 5 * 60
+const GAME_TIME_SEC = 5 * 60
 const READY_COUNTDOWN_SEC = 11
+
+const BEEP_2_QUICK = { freq: 1800, duration: 0.08, count: 2, silence: 0.05, type: "square" as const, gain: 0.22 }
+const BEEP_3_LONG = { freq: 800, duration: 0.18, count: 3, silence: 0.06, type: "square" as const, gain: 0.25 }
+const BEEP_BREAK_EACH_SEC = { freq: 1800, duration: 0.08, count: 1, silence: 0, type: "square" as const, gain: 0.22 }
+const BEEP_BREAK_ZERO = { freq: 700, duration: 0.8, count: 1, silence: 0, type: "sine" as const, gain: 0.28 }
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, seconds)
@@ -33,8 +38,10 @@ function TrainingView() {
   const searchParams = useSearchParams()
   const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
 
+  const { prime, playWav, playBeeps, playSequence } = useAudio()
+
   const [mode, setMode] = useState<TrainingMode>("IDLE")
-  const [breakSec, setBreakSec] = useState(BREAK_TIME_SEC)
+  const [readyCountdownSec, setReadyCountdownSec] = useState(READY_COUNTDOWN_SEC)
   const [gameSec, setGameSec] = useState(GAME_TIME_SEC)
   const [leftReady, setLeftReady] = useState(false)
   const [rightReady, setRightReady] = useState(false)
@@ -42,66 +49,120 @@ function TrainingView() {
   const [socketError, setSocketError] = useState<string | null>(null)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
 
-  useEffect(() => {
-    if (mode === "IDLE" && leftReady && rightReady) {
-      setMode("BREAK")
-      setBreakSec(READY_COUNTDOWN_SEC)
+  const audioOnceRef = useRef<Set<string>>(new Set())
+  const emitOnce = useCallback((key: string, fn: () => void) => {
+    if (audioOnceRef.current.has(key)) return
+    audioOnceRef.current.add(key)
+    fn()
+    window.setTimeout(() => audioOnceRef.current.delete(key), 2000)
+  }, [])
+
+  const resetToIdle = useCallback(() => {
+    setMode("IDLE")
+    setLeftReady(false)
+    setRightReady(false)
+    setReadyCountdownSec(READY_COUNTDOWN_SEC)
+    setGameSec(GAME_TIME_SEC)
+  }, [])
+
+  const onReadyButton = useCallback((side: "left" | "right") => {
+    if (mode !== "IDLE") return
+
+    prime()
+    emitOnce(`training:ready:${side}`, () => playBeeps(BEEP_2_QUICK))
+
+    const nextLeft = side === "left" ? true : leftReady
+    const nextRight = side === "right" ? true : rightReady
+
+    setLeftReady(nextLeft)
+    setRightReady(nextRight)
+
+    if (nextLeft && nextRight) {
+      setMode("READY_COUNTDOWN")
+      setReadyCountdownSec(READY_COUNTDOWN_SEC)
     }
-  }, [leftReady, rightReady, mode])
+  }, [emitOnce, leftReady, mode, playBeeps, prime, rightReady])
+
+  const finalizePoint = useCallback((action: "base" | "concede") => {
+    prime()
+
+    if (action === "base") {
+      emitOnce(`training:base:${Date.now()}`, () =>
+        playSequence({ preBeeps: BEEP_3_LONG, wav: "base" })
+      )
+    } else {
+      emitOnce(`training:concede:${Date.now()}`, () =>
+        playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
+      )
+    }
+
+    window.setTimeout(() => {
+      emitOnce(`training:point-approved:${Date.now()}`, () =>
+        playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
+      )
+    }, 1100)
+
+    resetToIdle()
+  }, [emitOnce, playSequence, prime, resetToIdle])
+
+  const onBaseButton = useCallback((side: "left" | "right") => {
+    if (mode === "IDLE") {
+      onReadyButton(side)
+      return
+    }
+
+    if (mode === "GAME") {
+      finalizePoint("base")
+    }
+  }, [finalizePoint, mode, onReadyButton])
+
+  const onPitButton = useCallback(() => {
+    if (mode === "GAME") {
+      finalizePoint("concede")
+    }
+  }, [finalizePoint, mode])
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (mode === "BREAK") {
-        setBreakSec((prev) => {
-          if (prev <= 1) {
+      if (mode === "READY_COUNTDOWN") {
+        setReadyCountdownSec((prev) => {
+          const next = prev - 1
+
+          if (next === 10) {
+            emitOnce("training:10-seconds", () => playWav("10-seconds"))
+          }
+
+          if (next <= 9 && next >= 1) {
+            emitOnce(`training:countdown:${next}`, () => playBeeps(BEEP_BREAK_EACH_SEC))
+          }
+
+          if (next <= 0) {
+            emitOnce("training:countdown:zero", () =>
+              playSequence({ preBeeps: BEEP_BREAK_ZERO, wav: "game-start" })
+            )
             setMode("GAME")
             return 0
           }
-          return prev - 1
+
+          return next
         })
       }
 
       if (mode === "GAME") {
         setGameSec((prev) => {
-          if (prev <= 1) {
-            setMode("IDLE")
-            setLeftReady(false)
-            setRightReady(false)
-            setBreakSec(BREAK_TIME_SEC)
+          const next = prev - 1
+          if (next <= 0) {
+            emitOnce("training:game-time-finished", () => playWav("game-time-finished"))
+            resetToIdle()
             return 0
           }
-          return prev - 1
+          return next
         })
       }
     }, 1000)
 
     return () => window.clearInterval(id)
-  }, [mode])
-
-  const resetAfterPoint = () => {
-    setMode("BREAK")
-    setBreakSec(BREAK_TIME_SEC)
-    setLeftReady(false)
-    setRightReady(false)
-  }
-
-  const onBaseButton = (side: "left" | "right") => {
-    if (mode === "IDLE") {
-      if (side === "left") setLeftReady(true)
-      if (side === "right") setRightReady(true)
-      return
-    }
-
-    if (mode === "GAME") {
-      resetAfterPoint()
-    }
-  }
-
-  const onPitButton = () => {
-    if (mode === "GAME") {
-      resetAfterPoint()
-    }
-  }
+  }, [emitOnce, mode, playBeeps, playSequence, playWav, resetToIdle])
 
   useEffect(() => {
     let socket: SocketConnection | null = null
@@ -167,7 +228,7 @@ function TrainingView() {
       isMounted = false
       if (socket) socket.disconnect()
     }
-  }, [mode])
+  }, [onBaseButton, onPitButton])
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
@@ -199,9 +260,9 @@ function TrainingView() {
         <div className="rounded-lg border border-border bg-card p-4 text-center">
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Estado</p>
           <p className="mt-2 text-lg font-bold text-foreground">{mode}</p>
-          <p className="mt-3 text-xs uppercase tracking-widest text-muted-foreground">Break</p>
-          <p className="font-mono text-4xl font-black text-amber-300">{formatTime(breakSec)}</p>
-          <p className="mt-2 text-xs uppercase tracking-widest text-muted-foreground">Juego</p>
+          <p className="mt-3 text-xs uppercase tracking-widest text-muted-foreground">Cuenta regresiva (11s)</p>
+          <p className="font-mono text-4xl font-black text-amber-300">{formatTime(readyCountdownSec)}</p>
+          <p className="mt-2 text-xs uppercase tracking-widest text-muted-foreground">Juego (5:00)</p>
           <p className="font-mono text-3xl font-black text-cyan-300">{formatTime(gameSec)}</p>
         </div>
 
