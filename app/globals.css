@@ -98,3 +98,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #0f172a !important;
+  }
+
+  .fixture-print-area {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+}
