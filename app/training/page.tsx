@@ -25,7 +25,7 @@ const READY_COUNTDOWN_SEC = 11
 const BEEP_2_QUICK = { freq: 1800, duration: 0.08, count: 2, silence: 0.05, type: "square" as const, gain: 0.22 }
 const BEEP_3_LONG = { freq: 800, duration: 0.18, count: 3, silence: 0.06, type: "square" as const, gain: 0.25 }
 const BEEP_BREAK_EACH_SEC = { freq: 1800, duration: 0.08, count: 1, silence: 0, type: "square" as const, gain: 0.22 }
-const BEEP_BREAK_ZERO = { freq: 700, duration: 0.8, count: 1, silence: 0, type: "sine" as const, gain: 0.28 }
+const BEEP_BREAK_ZERO = { freq: 800, duration: 1, count: 1, silence: 0, type: "square" as const, gain: 0.28 }
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, seconds)
@@ -210,7 +210,7 @@ function TrainingView() {
       socket.on("connect", onConnect)
       socket.on("disconnect", onDisconnect)
       socket.on("connect_error", onConnectError)
-      socket.on("button-press", onButtonEvent)
+      socket.on("button_press", onButtonEvent)
       socket.on("button", onButtonEvent)
     }
 
