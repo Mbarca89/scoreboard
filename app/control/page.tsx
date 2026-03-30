@@ -7,7 +7,7 @@ import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
 import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
-import { Suspense, useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 
 type SocketConnection = {
   on: (event: string, cb: (...args: unknown[]) => void) => void
@@ -51,6 +51,7 @@ function ControlBoard() {
   const [socketConnected, setSocketConnected] = useState(false)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
   const [socketError, setSocketError] = useState<string | null>(null)
+  const lastSocketEventRef = useRef<{ buttonId: number; ts: number } | null>(null)
 
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
@@ -130,6 +131,12 @@ function ControlBoard() {
 
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
         if (typeof maybeButtonId !== "number") return
+        const now = Date.now()
+        const last = lastSocketEventRef.current
+        if (last && last.buttonId === maybeButtonId && now - last.ts < 250) {
+          return
+        }
+        lastSocketEventRef.current = { buttonId: maybeButtonId, ts: now }
 
         setLastButtonId(maybeButtonId)
 
