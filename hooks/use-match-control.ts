@@ -145,14 +145,6 @@ export function useMatchControl(eventId: string) {
   // break 0: beep largo distinto + luego game-start.wav
   const BEEP_BREAK_ZERO = { freq: 800, duration: 1, count: 1, silence: 0, type: "square" as const, gain: 0.28 }
 
-  const scheduleGameFinished = useCallback((matchId: string) => {
-    setTimeout(() => {
-      emitOnce(`ui:game-finished:${matchId}`, () =>
-        playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
-      )
-    }, 1500)
-  }, [emitOnce, playSequence])
-
   const scheduleSwitchAnnouncement = useCallback((fromSlot: AXLSlot, toSlot: AXLSlot, blockId: string, matchId: string, delayMs = 1400) => {
     window.setTimeout(() => {
       emitOnce(`switch:${fromSlot}->${toSlot}:${blockId}:${matchId}`, () =>
@@ -338,9 +330,52 @@ export function useMatchControl(eventId: string) {
         if (match.timerMode === "GAME" && match.gameTimerSec > 0) {
           const newGame = match.gameTimerSec - 1
 
-          // 0: game-time-finished.wav
+          // Game timer reached zero -> finish match immediately with current score.
           if (newGame === 0) {
-            emitOnce(`game:${match.matchId}:0`, () => playWav("game-time-finished"))
+            emitOnce(`game:${match.matchId}:finished`, () =>
+              playSequence({ preBeeps: BEEP_3_LONG, wav: "game-finished" })
+            )
+
+            const leftScore = match.leftTeam.score
+            const rightScore = match.rightTeam.score
+            const resultType =
+              leftScore > rightScore
+                ? "LEFT_WIN"
+                : rightScore > leftScore
+                  ? "RIGHT_WIN"
+                  : "DRAW"
+            const winnerTeamId =
+              leftScore > rightScore
+                ? match.leftTeam.id
+                : rightScore > leftScore
+                  ? match.rightTeam.id
+                  : undefined
+
+            const updatedMatch: MatchState = {
+              ...match,
+              gameTimerSec: 0,
+              timerMode: "IDLE" as TimerMode,
+              isFinished: true,
+            }
+
+            saveScore(
+              match.matchId,
+              leftScore,
+              rightScore,
+              0,
+              true,
+              resultType,
+              winnerTeamId
+            )
+
+            breakSoundsPlayedRef.current.clear()
+            const result = resolvePostPoint(prev, matchKey, updatedMatch, true)
+
+            if (result.activeSlot !== prev.activeSlot) {
+              scheduleSwitchAnnouncement(prev.activeSlot, result.activeSlot, prev.blockId, updatedMatch.matchId, 2600)
+            }
+            syncLiveState(result)
+            return result
           }
 
           const updated = {
@@ -514,21 +549,16 @@ export function useMatchControl(eventId: string) {
   const handleConcede = useCallback(
     (side: "left" | "right") => {
       prime()
-      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${Date.now()}`
-      emitOnce(concedeAudioKey, () =>
+      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${side}:${Date.now()}`
+      emitOnce(`${concedeAudioKey}:start`, () =>
         playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
       )
-      window.setTimeout(() => {
-        emitOnce(`ui:concede:approved:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
-          playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
-        )
-      }, 1200)
 
       setTimeout(() => {
         emitOnce(`${concedeAudioKey}:approved`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
         )
-      }, 700)
+      }, 1000)
 
       setState((prev) => {
         const slot = prev.activeSlot
