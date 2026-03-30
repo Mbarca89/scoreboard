@@ -246,7 +246,7 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
             <TeamLogo
               src={data.left_team_logo_path}
               alt={data.left_team_name}
-              size={144}
+              size={288}
             />
             <h2 className="text-right text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
               {data.left_team_name}
@@ -269,7 +269,7 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
             <TeamLogo
               src={data.right_team_logo_path}
               alt={data.right_team_name}
-              size={144}
+              size={288}
             />
             <h2 className="text-left text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
               {data.right_team_name}
