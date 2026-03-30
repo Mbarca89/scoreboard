@@ -145,14 +145,6 @@ export function useMatchControl(eventId: string) {
   // break 0: beep largo distinto + luego game-start.wav
   const BEEP_BREAK_ZERO = { freq: 800, duration: 1, count: 1, silence: 0, type: "square" as const, gain: 0.28 }
 
-  const scheduleGameFinished = useCallback((matchId: string) => {
-    setTimeout(() => {
-      emitOnce(`ui:game-finished:${matchId}`, () =>
-        playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
-      )
-    }, 1500)
-  }, [emitOnce, playSequence])
-
   const scheduleSwitchAnnouncement = useCallback((fromSlot: AXLSlot, toSlot: AXLSlot, blockId: string, matchId: string, delayMs = 1400) => {
     window.setTimeout(() => {
       emitOnce(`switch:${fromSlot}->${toSlot}:${blockId}:${matchId}`, () =>
@@ -514,21 +506,16 @@ export function useMatchControl(eventId: string) {
   const handleConcede = useCallback(
     (side: "left" | "right") => {
       prime()
-      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${Date.now()}`
-      emitOnce(concedeAudioKey, () =>
+      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${side}:${Date.now()}`
+      emitOnce(`${concedeAudioKey}:start`, () =>
         playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
       )
-      window.setTimeout(() => {
-        emitOnce(`ui:concede:approved:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
-          playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
-        )
-      }, 1200)
 
       setTimeout(() => {
         emitOnce(`${concedeAudioKey}:approved`, () =>
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
         )
-      }, 700)
+      }, 1000)
 
       setState((prev) => {
         const slot = prev.activeSlot
