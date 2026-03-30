@@ -7,7 +7,7 @@ import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
 import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useSearchParams } from "next/navigation"
-import { Suspense, useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 
 type SocketConnection = {
   on: (event: string, cb: (...args: unknown[]) => void) => void
@@ -51,6 +51,7 @@ function ControlBoard() {
   const [socketConnected, setSocketConnected] = useState(false)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
   const [socketError, setSocketError] = useState<string | null>(null)
+  const lastSocketEventRef = useRef<{ buttonId: number; ts: number } | null>(null)
 
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
@@ -61,30 +62,30 @@ function ControlBoard() {
   const physLeftTeam = activeMatch ? (swapped ? activeMatch.rightTeam : activeMatch.leftTeam) : null
   const physRightTeam = activeMatch ? (swapped ? activeMatch.leftTeam : activeMatch.rightTeam) : null
 
-  // Map physical side to data side for handleBase/handleConcede/useTimeout
-  // Physical "left" = data "left" when not swapped, data "right" when swapped
+  // Map physical field side to data side for BASE only.
+  // On field, teams swap sides after each valid point.
   const toDataSide = useCallback((physSide: "left" | "right") => {
     if (!swapped) return physSide
     return physSide === "left" ? "right" : "left"
   }, [swapped])
 
-  const handleSharedSideButton = useCallback((physSide: "left" | "right") => {
+  // Pit buttons are physically fixed to each side during the whole match.
+  // So timeout/concede must always target the same data-side team.
+  const handlePitSideButton = useCallback((pitSide: "left" | "right") => {
     if (!activeMatch) return
 
-    const dataSide = toDataSide(physSide)
-
-    // Same physical listener for timeout/concede:
+    // Same pit listener for timeout/concede:
     // - BREAK and break > 11 sec => timeout
     // - GAME => concede
     if (activeMatch.timerMode === "BREAK" && activeMatch.breakTimerSec > 11) {
-      useTimeout(state.activeSlot, dataSide)
+      useTimeout(state.activeSlot, pitSide)
       return
     }
 
     if (activeMatch.timerMode === "GAME") {
-      handleConcede(dataSide)
+      handleConcede(pitSide)
     }
-  }, [activeMatch, handleConcede, state.activeSlot, toDataSide, useTimeout])
+  }, [activeMatch, handleConcede, state.activeSlot, useTimeout])
 
   // For pending decision display, resolve team name using physical position
   const pendingTeamName = hasPendingDecision
@@ -130,6 +131,12 @@ function ControlBoard() {
 
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
         if (typeof maybeButtonId !== "number") return
+        const now = Date.now()
+        const last = lastSocketEventRef.current
+        if (last && last.buttonId === maybeButtonId && now - last.ts < 250) {
+          return
+        }
+        lastSocketEventRef.current = { buttonId: maybeButtonId, ts: now }
 
         setLastButtonId(maybeButtonId)
 
@@ -138,13 +145,13 @@ function ControlBoard() {
             handleBase(toDataSide("left"))
             break
           case 2:
-            handleSharedSideButton("left")
+            handlePitSideButton("left")
             break
           case 3:
             handleBase(toDataSide("right"))
             break
           case 4:
-            handleSharedSideButton("right")
+            handlePitSideButton("right")
             break
           default:
             break
@@ -174,7 +181,7 @@ function ControlBoard() {
         socket.disconnect()
       }
     }
-  }, [handleBase, handleSharedSideButton, toDataSide])
+  }, [handleBase, handlePitSideButton, toDataSide])
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
@@ -211,8 +218,8 @@ function ControlBoard() {
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
           onBase={() => handleBase(toDataSide("left"))}
-          onTimeout={() => handleSharedSideButton("left")}
-          onConcede={() => handleSharedSideButton("left")}
+          onTimeout={() => handlePitSideButton("left")}
+          onConcede={() => handlePitSideButton("left")}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
@@ -268,8 +275,8 @@ function ControlBoard() {
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
           onBase={() => handleBase(toDataSide("right"))}
-          onTimeout={() => handleSharedSideButton("right")}
-          onConcede={() => handleSharedSideButton("right")}
+          onTimeout={() => handlePitSideButton("right")}
+          onConcede={() => handlePitSideButton("right")}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
