@@ -1,49 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
-
-interface MatchRow {
-  event_id: string
-  match_id: string
-  block_id: string
-  category: string
-  created_at: string
-  display_label: string | null
-  is_finished: boolean
-  left_score: number
-  left_team_id: string
-  left_team_logo_path: string | null
-  left_team_name: string
-  notes: string | null
-  result_type: string | null
-  right_score: number
-  right_team_id: string
-  right_team_logo_path: string | null
-  right_team_name: string
-  slot: string
-  stage: string
-  time_remaining_sec: number
-  updated_at: string
-  winner_team_id: string | null
-}
-
-interface BlockRow {
-  event_id: string
-  block_id: string
-  active_slot: string
-  block_order: number
-  category: string
-  created_at: string
-  stage: string
-  status: string
-  updated_at: string
-}
+import type { Match, FixtureBlock } from "@/lib/types"
 
 export async function POST(req: NextRequest) {
-  const { eventId } = await req.json()
+  const body = await req.json()
+  const { eventId, blockId, matches: providedMatches, fixtureBlocks: providedFixtureBlocks } = body
 
   if (!eventId) {
     return NextResponse.json({ error: "eventId is required" }, { status: 400 })
   }
+
+  const normalizedBlockId = typeof blockId === "string" && blockId.trim().length > 0 ? blockId.trim() : null
 
   const syncToken = process.env.DYNAMO_SYNC_TOKEN
   const lambdaUrl = process.env.DYNAMO_SYNC_LAMBDA_URL
@@ -55,22 +22,48 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "DYNAMO_SYNC_LAMBDA_URL is not configured" }, { status: 500 })
   }
 
-  const matches = await sql<MatchRow[]>`
-    SELECT event_id, match_id, block_id, category, created_at, display_label, is_finished,
-      left_score, left_team_id, left_team_logo_path, left_team_name, notes, result_type,
-      right_score, right_team_id, right_team_logo_path, right_team_name,
-      slot, stage, time_remaining_sec, updated_at, winner_team_id
-    FROM matches
-    WHERE event_id = ${eventId}
-    ORDER BY block_id, slot ASC
-  `
+  const hasProvidedMatches = Array.isArray(providedMatches)
+  const hasProvidedBlocks = Array.isArray(providedFixtureBlocks)
 
-  const blocks = await sql<BlockRow[]>`
-    SELECT event_id, block_id, active_slot, block_order, category, created_at, stage, status, updated_at
-    FROM fixture_blocks
-    WHERE event_id = ${eventId}
-    ORDER BY block_order ASC
-  `
+  const matches = hasProvidedMatches
+    ? (providedMatches as Match[])
+      .filter((m) => m.event_id === eventId && (!normalizedBlockId || m.block_id === normalizedBlockId))
+      .sort((a, b) => (normalizedBlockId ? a.slot.localeCompare(b.slot) : `${a.block_id}:${a.slot}`.localeCompare(`${b.block_id}:${b.slot}`)))
+    : normalizedBlockId
+      ? await sql<Match[]>`
+        SELECT *
+        FROM matches
+        WHERE event_id = ${eventId} AND block_id = ${normalizedBlockId}
+        ORDER BY slot ASC
+      `
+      : await sql<Match[]>`
+        SELECT *
+        FROM matches
+        WHERE event_id = ${eventId}
+        ORDER BY block_id, slot ASC
+      `
+
+  const blocks = hasProvidedBlocks
+    ? (providedFixtureBlocks as FixtureBlock[])
+      .filter((b) => b.event_id === eventId && (!normalizedBlockId || b.block_id === normalizedBlockId))
+      .sort((a, b) => a.block_order - b.block_order)
+    : normalizedBlockId
+      ? await sql<FixtureBlock[]>`
+        SELECT *
+        FROM fixture_blocks
+        WHERE event_id = ${eventId} AND block_id = ${normalizedBlockId}
+        ORDER BY block_order ASC
+      `
+      : await sql<FixtureBlock[]>`
+        SELECT *
+        FROM fixture_blocks
+        WHERE event_id = ${eventId}
+        ORDER BY block_order ASC
+      `
+
+  if (normalizedBlockId && blocks.length === 0) {
+    return NextResponse.json({ error: `blockId '${normalizedBlockId}' not found for event '${eventId}'` }, { status: 404 })
+  }
 
   const matchAByBlock = new Map<string, string>()
   const matchBByBlock = new Map<string, string>()
@@ -85,44 +78,18 @@ export async function POST(req: NextRequest) {
       matches: "Matches",
       fixtureBlocks: "FixtureBlocks",
     },
-    eventId,
+    event_id: eventId,
+    block_id: normalizedBlockId,
     matches: matches.map((m) => ({
-      eventId: m.event_id,
+      ...m,
       sk: `MATCH#${m.match_id}`,
-      blockSk: `BLOCK#${m.block_id}`,
-      category: m.category,
-      createdAt: m.created_at,
-      displayLabel: m.display_label,
-      isFinished: m.is_finished,
-      leftScore: m.left_score,
-      leftTeamId: m.left_team_id,
-      leftTeamLogoKey: m.left_team_logo_path,
-      leftTeamNameSnapshot: m.left_team_name,
-      matchId: m.match_id,
-      notes: m.notes,
-      resultType: m.result_type,
-      rightScore: m.right_score,
-      rightTeamId: m.right_team_id,
-      rightTeamLogoKey: m.right_team_logo_path,
-      rightTeamNameSnapshot: m.right_team_name,
-      slot: m.slot,
-      stage: m.stage,
-      timeRemainingSec: m.time_remaining_sec,
-      updatedAt: m.updated_at,
-      winnerTeamId: m.winner_team_id,
+      block_sk: `BLOCK#${m.block_id}`,
     })),
     fixtureBlocks: blocks.map((b) => ({
-      eventId: b.event_id,
+      ...b,
       sk: `BLOCK#${b.block_id}`,
-      activeSlot: b.active_slot,
-      blockOrder: b.block_order,
-      category: b.category,
-      createdAt: b.created_at,
-      matchAId: matchAByBlock.get(b.block_id) ?? null,
-      matchBId: matchBByBlock.get(b.block_id) ?? null,
-      stage: b.stage,
-      status: b.status,
-      updatedAt: b.updated_at,
+      match_a_id: matchAByBlock.get(b.block_id) ?? null,
+      match_b_id: matchBByBlock.get(b.block_id) ?? null,
     })),
   }
 
@@ -140,5 +107,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "lambda sync failed", details: text }, { status: 502 })
   }
 
-  return NextResponse.json({ ok: true, matches: matches.length, fixtureBlocks: blocks.length, lambdaResponse: text })
+  return NextResponse.json({
+    ok: true,
+    scope: normalizedBlockId ? "block" : "event",
+    blockId: normalizedBlockId,
+    matches: matches.length,
+    fixtureBlocks: blocks.length,
+    lambdaResponse: text,
+  })
 }
