@@ -330,9 +330,52 @@ export function useMatchControl(eventId: string) {
         if (match.timerMode === "GAME" && match.gameTimerSec > 0) {
           const newGame = match.gameTimerSec - 1
 
-          // 0: game-time-finished.wav
+          // Game timer reached zero -> finish match immediately with current score.
           if (newGame === 0) {
-            emitOnce(`game:${match.matchId}:0`, () => playWav("game-time-finished"))
+            emitOnce(`game:${match.matchId}:finished`, () =>
+              playSequence({ preBeeps: BEEP_3_LONG, wav: "game-finished" })
+            )
+
+            const leftScore = match.leftTeam.score
+            const rightScore = match.rightTeam.score
+            const resultType =
+              leftScore > rightScore
+                ? "LEFT_WIN"
+                : rightScore > leftScore
+                  ? "RIGHT_WIN"
+                  : "DRAW"
+            const winnerTeamId =
+              leftScore > rightScore
+                ? match.leftTeam.id
+                : rightScore > leftScore
+                  ? match.rightTeam.id
+                  : undefined
+
+            const updatedMatch: MatchState = {
+              ...match,
+              gameTimerSec: 0,
+              timerMode: "IDLE" as TimerMode,
+              isFinished: true,
+            }
+
+            saveScore(
+              match.matchId,
+              leftScore,
+              rightScore,
+              0,
+              true,
+              resultType,
+              winnerTeamId
+            )
+
+            breakSoundsPlayedRef.current.clear()
+            const result = resolvePostPoint(prev, matchKey, updatedMatch, true)
+
+            if (result.activeSlot !== prev.activeSlot) {
+              scheduleSwitchAnnouncement(prev.activeSlot, result.activeSlot, prev.blockId, updatedMatch.matchId, 2600)
+            }
+            syncLiveState(result)
+            return result
           }
 
           const updated = {
