@@ -79,7 +79,6 @@ export function BlockSelector({ eventId, currentBlockId, activeSlot, matchA, mat
               onClick={() => onSelectBlock(block.block_id)}
             >
               {block.block_order} - {block.category}
-              {isDone && " (DONE)"}
             </Button>
           )
         })}
