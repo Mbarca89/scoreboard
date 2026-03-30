@@ -39,11 +39,13 @@ interface BlockRow {
 }
 
 export async function POST(req: NextRequest) {
-  const { eventId } = await req.json()
+  const { eventId, blockId } = await req.json()
 
   if (!eventId) {
     return NextResponse.json({ error: "eventId is required" }, { status: 400 })
   }
+
+  const normalizedBlockId = typeof blockId === "string" && blockId.trim().length > 0 ? blockId.trim() : null
 
   const syncToken = process.env.DYNAMO_SYNC_TOKEN
   const lambdaUrl = process.env.DYNAMO_SYNC_LAMBDA_URL
@@ -55,22 +57,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "DYNAMO_SYNC_LAMBDA_URL is not configured" }, { status: 500 })
   }
 
-  const matches = await sql<MatchRow[]>`
-    SELECT event_id, match_id, block_id, category, created_at, display_label, is_finished,
-      left_score, left_team_id, left_team_logo_path, left_team_name, notes, result_type,
-      right_score, right_team_id, right_team_logo_path, right_team_name,
-      slot, stage, time_remaining_sec, updated_at, winner_team_id
-    FROM matches
-    WHERE event_id = ${eventId}
-    ORDER BY block_id, slot ASC
-  `
+  const matches = normalizedBlockId
+    ? await sql<MatchRow[]>`
+      SELECT event_id, match_id, block_id, category, created_at, display_label, is_finished,
+        left_score, left_team_id, left_team_logo_path, left_team_name, notes, result_type,
+        right_score, right_team_id, right_team_logo_path, right_team_name,
+        slot, stage, time_remaining_sec, updated_at, winner_team_id
+      FROM matches
+      WHERE event_id = ${eventId} AND block_id = ${normalizedBlockId}
+      ORDER BY slot ASC
+    `
+    : await sql<MatchRow[]>`
+      SELECT event_id, match_id, block_id, category, created_at, display_label, is_finished,
+        left_score, left_team_id, left_team_logo_path, left_team_name, notes, result_type,
+        right_score, right_team_id, right_team_logo_path, right_team_name,
+        slot, stage, time_remaining_sec, updated_at, winner_team_id
+      FROM matches
+      WHERE event_id = ${eventId}
+      ORDER BY block_id, slot ASC
+    `
 
-  const blocks = await sql<BlockRow[]>`
-    SELECT event_id, block_id, active_slot, block_order, category, created_at, stage, status, updated_at
-    FROM fixture_blocks
-    WHERE event_id = ${eventId}
-    ORDER BY block_order ASC
-  `
+  const blocks = normalizedBlockId
+    ? await sql<BlockRow[]>`
+      SELECT event_id, block_id, active_slot, block_order, category, created_at, stage, status, updated_at
+      FROM fixture_blocks
+      WHERE event_id = ${eventId} AND block_id = ${normalizedBlockId}
+      ORDER BY block_order ASC
+    `
+    : await sql<BlockRow[]>`
+      SELECT event_id, block_id, active_slot, block_order, category, created_at, stage, status, updated_at
+      FROM fixture_blocks
+      WHERE event_id = ${eventId}
+      ORDER BY block_order ASC
+    `
+
+  if (normalizedBlockId && blocks.length === 0) {
+    return NextResponse.json({ error: `blockId '${normalizedBlockId}' not found for event '${eventId}'` }, { status: 404 })
+  }
 
   const matchAByBlock = new Map<string, string>()
   const matchBByBlock = new Map<string, string>()
@@ -86,6 +109,7 @@ export async function POST(req: NextRequest) {
       fixtureBlocks: "FixtureBlocks",
     },
     eventId,
+    blockId: normalizedBlockId,
     matches: matches.map((m) => ({
       eventId: m.event_id,
       sk: `MATCH#${m.match_id}`,
@@ -140,5 +164,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "lambda sync failed", details: text }, { status: 502 })
   }
 
-  return NextResponse.json({ ok: true, matches: matches.length, fixtureBlocks: blocks.length, lambdaResponse: text })
+  return NextResponse.json({
+    ok: true,
+    scope: normalizedBlockId ? "block" : "event",
+    blockId: normalizedBlockId,
+    matches: matches.length,
+    fixtureBlocks: blocks.length,
+    lambdaResponse: text,
+  })
 }
