@@ -186,7 +186,7 @@ function ControlBoard() {
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
       <div className="flex items-center justify-end gap-2 rounded-lg border border-border bg-card/60 px-3 py-2">
-        <DynamoSyncButton eventId={eventId} />
+        <DynamoSyncButton eventId={eventId} blockId={state.blockId} />
         <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
           Socket botonera
         </span>
