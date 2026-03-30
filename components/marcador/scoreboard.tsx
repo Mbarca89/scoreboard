@@ -2,11 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
-import useSWR from "swr"
 import type { MatchLiveState, TimerMode } from "@/lib/types"
 import { Shield } from "lucide-react"
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -112,11 +109,34 @@ interface ScoreboardProps {
 export function Scoreboard({ eventId }: ScoreboardProps) {
   const [now, setNow] = useState(() => Date.now())
 
-  const { data } = useSWR<MatchLiveState>(
-    `/api/live-state?eventId=${eventId}`,
-    fetcher,
-    { refreshInterval: 1000 }
-  )
+  const [data, setData] = useState<MatchLiveState | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch(`/api/live-state?eventId=${eventId}`)
+      .then((r) => r.json())
+      .then((initial) => {
+        if (!cancelled) setData(initial)
+      })
+      .catch(() => {
+        // silent
+      })
+
+    const es = new EventSource(`/api/live-state/stream?eventId=${eventId}`)
+    es.onmessage = (event) => {
+      try {
+        setData(JSON.parse(event.data))
+      } catch {
+        // ignore malformed payload
+      }
+    }
+
+    return () => {
+      cancelled = true
+      es.close()
+    }
+  }, [eventId])
 
   useEffect(() => {
     const id = window.setInterval(() => {

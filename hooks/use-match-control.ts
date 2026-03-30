@@ -161,6 +161,14 @@ export function useMatchControl(eventId: string) {
     }, delayMs)
   }, [emitOnce, playSequence])
 
+  const scheduleGameFinished = useCallback((matchId: string) => {
+    setTimeout(() => {
+      emitOnce(`ui:game-finished:${matchId}`, () =>
+        playSequence({ preBeeps: BEEP_2_QUICK, wav: "game-finished" })
+      )
+    }, 1500)
+  }, [emitOnce, playSequence])
+
   // Sync live state to DB for polling
   const syncLiveState = useCallback(async (s: ControlState) => {
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
@@ -478,6 +486,8 @@ export function useMatchControl(eventId: string) {
   // The scoring team is the OPPOSITE side (they reached the rival's base).
   const handleBase = useCallback(
     (side: "left" | "right") => {
+      if (activeMatch?.timerMode !== "GAME") return
+
       prime()
       emitOnce(`ui:base:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
         playSequence({ preBeeps: BEEP_3_LONG, wav: "base" })
@@ -489,7 +499,7 @@ export function useMatchControl(eventId: string) {
         const slot = prev.activeSlot
         const matchKey = slot === "A" ? "matchA" : "matchB"
         const match = prev[matchKey]
-        if (!match) return prev
+        if (!match || match.timerMode !== "GAME") return prev
         return {
           ...prev,
           [matchKey]: { ...match, timerMode: "PAUSED" as TimerMode },
@@ -497,7 +507,7 @@ export function useMatchControl(eventId: string) {
         }
       })
     },
-    [prime, emitOnce, playSequence, state.activeSlot, state.blockId]
+    [activeMatch?.timerMode, prime, emitOnce, playSequence, state.activeSlot, state.blockId]
   )
 
   // Concede (3 beeps + concede.wav)
@@ -513,6 +523,12 @@ export function useMatchControl(eventId: string) {
           playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
         )
       }, 1200)
+
+      setTimeout(() => {
+        emitOnce(`${concedeAudioKey}:approved`, () =>
+          playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
+        )
+      }, 700)
 
       setState((prev) => {
         const slot = prev.activeSlot
