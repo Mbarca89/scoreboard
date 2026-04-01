@@ -117,7 +117,10 @@ export function ObsScorebar({ eventId }: { eventId: string }) {
 
   return (
     <div className="flex h-screen w-screen items-end bg-transparent p-6 md:p-8">
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_auto_auto_1fr] items-center gap-4 rounded-2xl border border-white/15 bg-gradient-to-r from-sky-950/85 via-black/80 to-sky-950/85 px-5 py-3 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
+      <div className="flex items-center justify-center z-1 absolute right-0 top-0 px-6 py-6">
+        <Image src="/images/axl-logo.png" alt="AXL" width={80} height={80} className="h-30 w-30 object-contain" unoptimized />
+      </div>
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-[1fr_auto_1fr] items-center gap-4 rounded-2xl border border-white/15 bg-gradient-to-r from-sky-950/85 via-black/80 to-sky-950/85 px-5 py-3 text-white shadow-[0_10px_40px_rgba(0,0,0,0.5)] backdrop-blur-lg">
         <div className="flex min-w-0 items-center gap-3">
           <TeamLogo src={data.left_team_logo_path} alt={data.left_team_name} />
           <div className="min-w-0">
@@ -126,16 +129,13 @@ export function ObsScorebar({ eventId }: { eventId: string }) {
           </div>
         </div>
 
-        <div className="min-w-[132px] text-center">
+        <div className="min-w-[132px] text-center absolute left-50 right-50 z-2">
           <p className="font-mono text-3xl font-black tracking-wider text-amber-300">{clock.value}</p>
           <p className="text-[11px] font-bold uppercase tracking-[0.35em] text-white/75">{getClockLabel(clock.mode)}</p>
         </div>
 
-        <div className="flex items-center justify-center px-1 md:px-2">
-          <Image src="/images/axl-logo.png" alt="AXL" width={40} height={40} className="h-10 w-10 object-contain" unoptimized />
-        </div>
 
-        <div className="min-w-[50px] text-center font-mono text-3xl font-black text-white/60">:</div>
+        <div className="min-w-[50px] text-center font-mono text-3xl font-black text-white/60"></div>
 
         <div className="flex min-w-0 items-center justify-end gap-3">
           <div className="min-w-0 text-right">
