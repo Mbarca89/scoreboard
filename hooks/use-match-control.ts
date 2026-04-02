@@ -10,6 +10,7 @@ function buildMatchState(m: Match): MatchState {
   return {
     matchId: m.match_id,
     slot: m.slot,
+    stage: m.stage,
     leftTeam: {
       id: m.left_team_id,
       name: m.left_team_name,
@@ -32,6 +33,8 @@ function buildMatchState(m: Match): MatchState {
     category: m.category,
     maxPoints: rules.maxPoints,
     maxGameTimeSec: rules.gameTimeSec,
+    isOvertime: m.is_overtime,
+    nextOvertimeSec: null,
   }
 }
 
@@ -160,6 +163,10 @@ export function useMatchControl(eventId: string) {
       )
     }, 1500)
   }, [emitOnce, playSequence])
+
+  const canUseOvertime = useCallback((match: MatchState): boolean => {
+    return match.stage === "SEMI" || match.stage === "FINAL"
+  }, [])
 
   // Sync live state to DB for polling
   const syncLiveState = useCallback(async (s: ControlState) => {
@@ -330,8 +337,27 @@ export function useMatchControl(eventId: string) {
         if (match.timerMode === "GAME" && match.gameTimerSec > 0) {
           const newGame = match.gameTimerSec - 1
 
-          // Game timer reached zero -> finish match immediately with current score.
+          // Game timer reached zero -> finish match, except tied SEMI/FINAL (overtime eligible).
           if (newGame === 0) {
+            const isTie = match.leftTeam.score === match.rightTeam.score
+            if (canUseOvertime(match) && isTie) {
+              emitOnce(`game:${match.matchId}:overtime`, () =>
+                playSequence({ preBeeps: BEEP_3_LONG, wav: "overtime" })
+              )
+              const overtimeSeconds = match.isOvertime ? 120 : 300
+              const updated = {
+                ...prev,
+                [matchKey]: {
+                  ...match,
+                  gameTimerSec: 0,
+                  timerMode: "PAUSED" as TimerMode,
+                  nextOvertimeSec: overtimeSeconds,
+                },
+              }
+              syncLiveState(updated)
+              return updated
+            }
+
             emitOnce(`game:${match.matchId}:finished`, () =>
               playSequence({ preBeeps: BEEP_3_LONG, wav: "game-finished" })
             )
@@ -393,7 +419,7 @@ export function useMatchControl(eventId: string) {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
     }
-  }, [emitOnce, playBeeps, playSequence, playWav, syncLiveState])
+  }, [canUseOvertime, emitOnce, playBeeps, playSequence, playWav, syncLiveState])
 
   // Start break timer (2 beeps rápidos) — emitOnce para evitar doble click / strict
   const startBreak = useCallback(() => {
@@ -575,7 +601,7 @@ export function useMatchControl(eventId: string) {
           timerMode: "IDLE" as TimerMode,
         }
 
-        const isFinished = newScore >= match.maxPoints
+        const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
         if (isFinished) {
           updatedMatch.isFinished = true
           const winnerTeamId = match[scoringKey].id
@@ -624,7 +650,7 @@ export function useMatchControl(eventId: string) {
         timerMode: "IDLE" as TimerMode,
       }
 
-      const isFinished = newScore >= match.maxPoints
+      const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
       if (isFinished) {
         updatedMatch.isFinished = true
         const winnerTeamId = match[teamKey].id
@@ -671,7 +697,7 @@ export function useMatchControl(eventId: string) {
         timerMode: "IDLE" as TimerMode,
       }
 
-      const isFinished = newScore >= match.maxPoints
+      const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
       if (isFinished) {
         updatedMatch.isFinished = true
         const winnerTeamId = match[oppositeKey].id
@@ -694,22 +720,12 @@ export function useMatchControl(eventId: string) {
     })
   }, [prime, emitOnce, playSequence, saveScore, scheduleSwitchAnnouncement, state.activeSlot, state.blockId])
 
-  // No point:
-  // - si viene de fromStop => reanudar GAME con beep largo + game-start (NO no-points.wav)
-  // - si no => 2 beeps + no-points.wav
+  // No point -> termina la jugada sin sumar y sigue el flujo normal.
   const noPoint = useCallback(() => {
     prime()
-
-    const fromStop = state.pendingDecision?.fromStop === true
-    if (fromStop) {
-      emitOnce(`ui:nopoint:fromStop:${state.activeSlot}:${state.blockId}`, () =>
-        playSequence({ preBeeps: BEEP_BREAK_ZERO, wav: "game-start" })
-      )
-    } else {
-      emitOnce(`ui:nopoint:real:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
-        playSequence({ preBeeps: BEEP_2_QUICK, wav: "no-points" })
-      )
-    }
+    emitOnce(`ui:nopoint:real:${state.activeSlot}:${state.blockId}:${Date.now()}`, () =>
+      playSequence({ preBeeps: BEEP_2_QUICK, wav: "no-points" })
+    )
 
     setState((prev) => {
       if (!prev.pendingDecision) return prev
@@ -722,14 +738,6 @@ export function useMatchControl(eventId: string) {
       const otherMatchKey = otherSlot === "A" ? "matchA" : "matchB"
       const otherMatch = prev[otherMatchKey]
       const otherFinished = !otherMatch || otherMatch.isFinished
-
-      if (prev.pendingDecision?.fromStop) {
-        return {
-          ...prev,
-          [matchKey]: { ...match, timerMode: "GAME" as TimerMode },
-          pendingDecision: null,
-        }
-      }
 
       breakSoundsPlayedRef.current.clear()
 
@@ -752,7 +760,54 @@ export function useMatchControl(eventId: string) {
         [otherMatchKey]: { ...otherMatch!, breakTimerSec: rules.breakTimeSec, timerMode: "BREAK" as TimerMode },
       }
     })
-  }, [prime, emitOnce, playSequence, state.pendingDecision, state.activeSlot, state.blockId])
+  }, [prime, emitOnce, playSequence, state.activeSlot, state.blockId])
+
+  // Reanudar desde una detención manual (sin cerrar la jugada).
+  const resumeStoppedGame = useCallback(() => {
+    prime()
+    emitOnce(`ui:resume:fromStop:${state.activeSlot}:${state.blockId}`, () =>
+      playSequence({ preBeeps: BEEP_BREAK_ZERO, wav: "game-start" })
+    )
+
+    setState((prev) => {
+      if (!prev.pendingDecision?.fromStop) return prev
+      const slot = prev.activeSlot
+      const matchKey = slot === "A" ? "matchA" : "matchB"
+      const match = prev[matchKey]
+      if (!match) return prev
+      return {
+        ...prev,
+        [matchKey]: { ...match, timerMode: "GAME" as TimerMode },
+        pendingDecision: null,
+      }
+    })
+  }, [prime, emitOnce, playSequence, state.activeSlot, state.blockId])
+
+  const startOvertime = useCallback(() => {
+    prime()
+    emitOnce(`ui:overtime:start:${state.activeSlot}:${state.blockId}`, () =>
+      playSequence({ preBeeps: BEEP_3_LONG, wav: "overtime" })
+    )
+
+    setState((prev) => {
+      const slot = prev.activeSlot
+      const matchKey = slot === "A" ? "matchA" : "matchB"
+      const match = prev[matchKey]
+      if (!match || !canUseOvertime(match)) return prev
+      const isTie = match.leftTeam.score === match.rightTeam.score
+      if (!isTie || match.nextOvertimeSec === null) return prev
+      return {
+        ...prev,
+        [matchKey]: {
+          ...match,
+          timerMode: "GAME" as TimerMode,
+          gameTimerSec: match.nextOvertimeSec,
+          isOvertime: true,
+          nextOvertimeSec: 120,
+        },
+      }
+    })
+  }, [prime, emitOnce, playSequence, canUseOvertime, state.activeSlot, state.blockId])
 
   // Timeout (2 beeps + timeout.wav) y suma 60s al break
   const useTimeout = useCallback(
@@ -832,6 +887,8 @@ export function useMatchControl(eventId: string) {
     approvePoint,
     reversePoint,
     noPoint,
+    resumeStoppedGame,
+    startOvertime,
     useTimeout,
   }
 }

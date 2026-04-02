@@ -10,9 +10,10 @@ interface DecisionPanelProps {
   onApprove: () => void
   onReverse: () => void
   onNoPoint: () => void
+  onResumeFromStop?: () => void
 }
 
-export function DecisionPanel({ side, teamName, isFromStop, onApprove, onReverse, onNoPoint }: DecisionPanelProps) {
+export function DecisionPanel({ side, teamName, isFromStop, onApprove, onReverse, onNoPoint, onResumeFromStop }: DecisionPanelProps) {
   return (
     <div className="flex flex-col items-center gap-4 rounded-lg border-2 border-accent bg-accent/10 p-5">
       <div className="flex flex-col items-center gap-1">
@@ -48,23 +49,20 @@ export function DecisionPanel({ side, teamName, isFromStop, onApprove, onReverse
           </>
         )}
 
-        <Button
-          variant={isFromStop ? "default" : "secondary"}
-          className={`flex-1 gap-2 ${isFromStop ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""}`}
-          onClick={onNoPoint}
-        >
-          {isFromStop ? (
-            <>
-              <Play className="h-4 w-4" />
-              Reanudar
-            </>
-          ) : (
-            <>
-              <X className="h-4 w-4" />
-              No Point
-            </>
-          )}
+        <Button variant="secondary" className="flex-1 gap-2" onClick={onNoPoint}>
+          <X className="h-4 w-4" />
+          No Point
         </Button>
+
+        {isFromStop && onResumeFromStop && (
+          <Button
+            className="flex-1 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={onResumeFromStop}
+          >
+            <Play className="h-4 w-4" />
+            Reanudar Juego
+          </Button>
+        )}
       </div>
     </div>
   )

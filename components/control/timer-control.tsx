@@ -18,6 +18,7 @@ interface TimerControlProps {
   onResume: () => void
   onSetBreak: (seconds: number) => void
   onSetGameTimer: (seconds: number) => void
+  onStartOvertime: () => void
   onCampoActivo: () => void
   hasPendingDecision: boolean
 }
@@ -29,6 +30,7 @@ export function TimerControl({
   onResume,
   onSetBreak,
   onSetGameTimer,
+  onStartOvertime,
   onCampoActivo,
   hasPendingDecision,
 }: TimerControlProps) {
@@ -50,6 +52,9 @@ export function TimerControl({
   const isBreak = match.timerMode === "BREAK"
   const isGame = match.timerMode === "GAME"
   const canEditGameTime = isIdle || isPaused
+  const isTie = match.leftTeam.score === match.rightTeam.score
+  const isBracketStage = match.stage === "SEMI" || match.stage === "FINAL"
+  const canStartOvertime = isBracketStage && isTie && match.nextOvertimeSec !== null && isPaused && !hasPendingDecision
 
   const breakColor = isBreak ? "text-timer-break" : "text-muted-foreground"
   const gameColor = isGame ? "text-timer-game" : "text-muted-foreground"
@@ -284,13 +289,25 @@ export function TimerControl({
       )}
 
       {isPaused && !hasPendingDecision && (
-        <Button
-          className="h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-          onClick={onResume}
-        >
-          <Play className="mr-2 h-5 w-5" />
-          REANUDAR
-        </Button>
+        <div className="flex w-full flex-col gap-2">
+          <Button
+            className="h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+            onClick={onResume}
+          >
+            <Play className="mr-2 h-5 w-5" />
+            REANUDAR
+          </Button>
+
+          {canStartOvertime && (
+            <Button
+              variant="secondary"
+              className="h-11 w-full text-sm font-bold"
+              onClick={onStartOvertime}
+            >
+              {match.isOvertime ? "OVERTIME +2:00" : "OVERTIME 5:00"}
+            </Button>
+          )}
+        </div>
       )}
     </div>
   )

@@ -98,6 +98,7 @@ export interface TeamState {
 export interface MatchState {
   matchId: string
   slot: AXLSlot
+  stage: AXLEventStage
   leftTeam: TeamState
   rightTeam: TeamState
   sidesSwapped: boolean
@@ -108,6 +109,8 @@ export interface MatchState {
   category: AXLCategory
   maxPoints: number
   maxGameTimeSec: number
+  isOvertime: boolean
+  nextOvertimeSec: number | null
 }
 
 export interface ControlState {

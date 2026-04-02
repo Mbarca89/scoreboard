@@ -45,6 +45,8 @@ function ControlBoard() {
     approvePoint,
     reversePoint,
     noPoint,
+    resumeStoppedGame,
+    startOvertime,
     useTimeout,
   } = useMatchControl(eventId)
 
@@ -236,6 +238,7 @@ function ControlBoard() {
             onResume={resumeTimer}
             onSetBreak={setBreakTimer}
             onSetGameTimer={setGameTimer}
+            onStartOvertime={startOvertime}
             onCampoActivo={() => {}}
             hasPendingDecision={hasPendingDecision}
           />
@@ -249,6 +252,7 @@ function ControlBoard() {
               onApprove={approvePoint}
               onReverse={reversePoint}
               onNoPoint={noPoint}
+              onResumeFromStop={resumeStoppedGame}
             />
           )}
 
