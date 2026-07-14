@@ -6,7 +6,7 @@ import { ObsScorebar } from "@/components/marcador/obs-scorebar"
 
 function OverlayView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
 
   return <ObsScorebar eventId={eventId} />
 }

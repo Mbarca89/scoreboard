@@ -7,6 +7,8 @@ import { Clock, Siren, Flag, Plus, Minus } from "lucide-react"
 interface TeamPanelProps {
   match: MatchState | null
   team: TeamState | null
+  pitTeam: TeamState | null
+  baseTeam: TeamState | null
   physicalSide: "left" | "right"
   isActive: boolean
   onBase: () => void
@@ -16,11 +18,14 @@ interface TeamPanelProps {
   onScoreDown: () => void
   disabled: boolean
   isPaused: boolean
+  isStoppedDecision?: boolean
 }
 
 export function TeamPanel({
   match,
   team,
+  pitTeam,
+  baseTeam,
   physicalSide,
   isActive,
   onBase,
@@ -30,6 +35,7 @@ export function TeamPanel({
   onScoreDown,
   disabled,
   isPaused,
+  isStoppedDecision,
 }: TeamPanelProps) {
   if (!match || !team) {
     return (
@@ -43,6 +49,14 @@ export function TeamPanel({
   const isGame = match.timerMode === "GAME"
   const isBreakTimeoutWindow = match.timerMode === "BREAK" && match.breakTimerSec > 11
   const canEditScore = match.timerMode === "IDLE" || isPaused
+  const canUseBase = isGame || Boolean(isStoppedDecision)
+  const sideLabel = physicalSide === "left" ? "Rojo" : "Azul"
+  const sideClasses =
+    physicalSide === "left"
+      ? "border-red-500/70 bg-red-500 text-white shadow-[0_0_16px_rgba(239,68,68,0.35)]"
+      : "border-blue-500/70 bg-blue-500 text-white shadow-[0_0_16px_rgba(59,130,246,0.35)]"
+  const sideTextClasses = physicalSide === "left" ? "text-red-400" : "text-blue-400"
+  const pitTimeoutUsed = pitTeam?.timeoutUsed ?? true
 
   return (
     <div
@@ -55,11 +69,17 @@ export function TeamPanel({
       }`}
     >
       {/* Team name */}
-      <div className="flex w-full flex-col items-center gap-1">
+      <div className="flex w-full flex-col items-center gap-2">
         <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          {match.slot === "A" ? "Partido A" : "Partido B"} - {physicalSide === "left" ? "Izquierda" : "Derecha"}
+          {match.slot === "A" ? "Partido A" : "Partido B"} - Entrada {sideLabel}
         </span>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-md border text-[10px] font-black uppercase ${sideClasses}`}>
+          {physicalSide === "left" ? "R" : "A"}
+        </div>
         <h2 className="text-center text-xl font-bold text-foreground">{team.name}</h2>
+        <span className={`text-[10px] font-semibold uppercase tracking-widest ${sideTextClasses}`}>
+          {physicalSide === "left" ? "Izquierda" : "Derecha"}
+        </span>
         {match.sidesSwapped && (
           <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-accent">
             Lado cambiado
@@ -108,10 +128,13 @@ export function TeamPanel({
           size="sm"
           className="w-full gap-2"
           onClick={onTimeout}
-          disabled={disabled || team.timeoutUsed || isFinished || !isActive || !isBreakTimeoutWindow}
+          disabled={disabled || pitTimeoutUsed || isFinished || !isActive || !isBreakTimeoutWindow}
+          title={pitTeam ? `Pit ${sideLabel}: ${pitTeam.name}` : undefined}
         >
           <Clock className="h-4 w-4" />
-          {team.timeoutUsed ? "Timeout usado" : "Time Out"}
+          <span className="min-w-0 truncate">
+            {pitTimeoutUsed ? "Timeout usado" : "Time Out"} {pitTeam ? `(${pitTeam.name})` : ""}
+          </span>
         </Button>
 
         <Button
@@ -120,18 +143,24 @@ export function TeamPanel({
           className="w-full gap-2 border-amber-600 text-amber-500 hover:bg-amber-600/10 hover:text-amber-400"
           onClick={onConcede}
           disabled={disabled || isFinished || !isActive || !isGame}
+          title={pitTeam ? `Pit ${sideLabel}: ${pitTeam.name}` : undefined}
         >
           <Flag className="h-4 w-4" />
-          Conceder
+          <span className="min-w-0 truncate">
+            Conceder {pitTeam ? `(${pitTeam.name})` : ""}
+          </span>
         </Button>
 
         <Button
           className="h-14 w-full text-lg font-bold bg-primary text-primary-foreground hover:bg-primary/90"
           onClick={onBase}
-          disabled={disabled || isFinished || !isActive || !isGame}
+          disabled={disabled || isFinished || !isActive || !canUseBase}
+          title={baseTeam ? `${isStoppedDecision ? "Point approved" : `Base ${sideLabel}`}: ${baseTeam.name}` : undefined}
         >
           <Siren className="mr-2 h-5 w-5" />
-          BASE
+          <span className="min-w-0 truncate">
+            {isStoppedDecision ? "Point approved" : "BASE"} {baseTeam ? `(${baseTeam.name})` : ""}
+          </span>
         </Button>
       </div>
     </div>

@@ -21,8 +21,14 @@ declare global {
   }
 }
 
-const EVENT_ID = "axl-2026-fecha-1"
+const EVENT_ID = "axl-2026-fecha-2"
 const SOCKET_SCRIPT_SRC = "https://cdn.socket.io/4.7.5/socket.io.min.js"
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
+}
 
 function ControlBoard() {
   const searchParams = useSearchParams()
@@ -42,6 +48,7 @@ function ControlBoard() {
     setScore,
     handleBase,
     handleConcede,
+    approveStoppedPoint,
     approvePoint,
     reversePoint,
     noPoint,
@@ -70,6 +77,20 @@ function ControlBoard() {
     if (!swapped) return physSide
     return physSide === "left" ? "right" : "left"
   }, [swapped])
+
+  const getScoringSideFromBase = useCallback((physSide: "left" | "right") => {
+    const baseDataSide = toDataSide(physSide)
+    return baseDataSide === "left" ? "right" : "left"
+  }, [toDataSide])
+
+  const handleBaseSideButton = useCallback((physSide: "left" | "right") => {
+    if (isFromStop) {
+      approveStoppedPoint(getScoringSideFromBase(physSide))
+      return
+    }
+
+    handleBase(toDataSide(physSide))
+  }, [approveStoppedPoint, getScoringSideFromBase, handleBase, isFromStop, toDataSide])
 
   // Pit buttons are physically fixed to each side during the whole match.
   // So timeout/concede must always target the same data-side team.
@@ -144,13 +165,13 @@ function ControlBoard() {
 
         switch (maybeButtonId) {
           case 1:
-            handleBase(toDataSide("left"))
+            handleBaseSideButton("left")
             break
           case 2:
             handlePitSideButton("left")
             break
           case 3:
-            handleBase(toDataSide("right"))
+            handleBaseSideButton("right")
             break
           case 4:
             handlePitSideButton("right")
@@ -183,7 +204,7 @@ function ControlBoard() {
         socket.disconnect()
       }
     }
-  }, [handleBase, handlePitSideButton, toDataSide])
+  }, [handleBaseSideButton, handlePitSideButton])
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">
@@ -218,15 +239,18 @@ function ControlBoard() {
         <TeamPanel
           match={activeMatch ?? null}
           team={physLeftTeam}
+          pitTeam={activeMatch?.leftTeam ?? null}
+          baseTeam={physRightTeam}
           physicalSide="left"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("left"))}
+          onBase={() => handleBaseSideButton("left")}
           onTimeout={() => handlePitSideButton("left")}
           onConcede={() => handlePitSideButton("left")}
           onScoreUp={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("left"), (physLeftTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
           isPaused={isPaused}
+          isStoppedDecision={isFromStop}
         />
 
         {/* Center controls */}
@@ -264,9 +288,14 @@ function ControlBoard() {
               </span>
               <div className="mt-1 flex items-center justify-between">
                 <span className="text-xs text-foreground">{waitingMatch.leftTeam.name}</span>
-                <span className="font-mono text-sm font-bold text-foreground">
-                  {waitingMatch.leftTeam.score} - {waitingMatch.rightTeam.score}
-                </span>
+                <div className="flex flex-col items-center">
+                  <span className="font-mono text-sm font-bold text-foreground">
+                    {waitingMatch.leftTeam.score} - {waitingMatch.rightTeam.score}
+                  </span>
+                  <span className="font-mono text-[10px] font-semibold text-muted-foreground">
+                    {formatTime(waitingMatch.gameTimerSec)}
+                  </span>
+                </div>
                 <span className="text-xs text-foreground">{waitingMatch.rightTeam.name}</span>
               </div>
             </div>
@@ -277,15 +306,18 @@ function ControlBoard() {
         <TeamPanel
           match={activeMatch ?? null}
           team={physRightTeam}
+          pitTeam={activeMatch?.rightTeam ?? null}
+          baseTeam={physLeftTeam}
           physicalSide="right"
           isActive={!hasPendingDecision || isFromStop}
-          onBase={() => handleBase(toDataSide("right"))}
+          onBase={() => handleBaseSideButton("right")}
           onTimeout={() => handlePitSideButton("right")}
           onConcede={() => handlePitSideButton("right")}
           onScoreUp={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) + 1)}
           onScoreDown={() => setScore(toDataSide("right"), (physRightTeam?.score ?? 0) - 1)}
           disabled={hasPendingDecision && !isFromStop}
           isPaused={isPaused}
+          isStoppedDecision={isFromStop}
         />
       </div>
 

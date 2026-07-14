@@ -38,7 +38,7 @@ import pg from "pg";
 const { Client: PgClient } = pg;
 
 /** ---------- Config ---------- */
-const EVENT_ID = process.argv[2] || "axl-2026-fecha-1";
+const EVENT_ID = process.argv[2] || "axl-2026-fecha-2";
 
 const AWS_REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "sa-east-1";
 

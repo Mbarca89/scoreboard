@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 
 function FixtureView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
 
   return (
     <div className="fixture-print-area min-h-screen bg-background p-4 print:bg-white print:p-3">

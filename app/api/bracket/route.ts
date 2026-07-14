@@ -23,20 +23,20 @@ export async function POST(req: NextRequest) {
     matches: MatchInput[]
   }
 
-  if (!eventId || !category || !stage || !Array.isArray(matches) || matches.length !== 2) {
-    return NextResponse.json({ error: "eventId, category, stage and exactly 2 matches are required" }, { status: 400 })
+  if (!eventId || !category || !stage || !Array.isArray(matches) || matches.length < 1 || matches.length > 2) {
+    return NextResponse.json({ error: "eventId, category, stage and 1 or 2 matches are required" }, { status: 400 })
   }
 
   const blockId = `block_${crypto.randomUUID()}`
   const matchAId = `match_${crypto.randomUUID()}`
-  const matchBId = `match_${crypto.randomUUID()}`
+  const matchBId = matches.length === 2 ? `match_${crypto.randomUUID()}` : null
 
   const maxOrderRows = await sql<{ max_order: number | null }[]>`
     SELECT MAX(block_order) AS max_order FROM fixture_blocks WHERE event_id = ${eventId}
   `
   const nextOrder = (maxOrderRows[0]?.max_order ?? 0) + 1
 
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < matches.length; i++) {
     const item = matches[i]
     const isBye = item.isBye === true
     if (!item.leftTeamId || !item.leftTeamName) {
@@ -56,9 +56,9 @@ export async function POST(req: NextRequest) {
   `
 
   const slots: Array<"A" | "B"> = ["A", "B"]
-  const ids = [matchAId, matchBId]
+  const ids = matchBId ? [matchAId, matchBId] : [matchAId]
 
-  for (let i = 0; i < 2; i++) {
+  for (let i = 0; i < matches.length; i++) {
     const item = matches[i]
     const isBye = item.isBye === true
     const rightTeamId = isBye ? "BYE" : (item.rightTeamId ?? "")

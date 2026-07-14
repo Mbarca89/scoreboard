@@ -173,13 +173,9 @@ export function useMatchControl(eventId: string) {
     const active = s.activeSlot === "A" ? s.matchA : s.matchB
     const waiting = s.activeSlot === "A" ? s.matchB : s.matchA
 
-    // Resolve physical sides based on sidesSwapped flag
+    // Scores/teams stay anchored to their pit for scoreboard views.
+    // Entry-side badges reflect the current field side after approved points.
     const aSwapped = active?.sidesSwapped ?? false
-    const physLeftTeam = active ? (aSwapped ? active.rightTeam : active.leftTeam) : null
-    const physRightTeam = active ? (aSwapped ? active.leftTeam : active.rightTeam) : null
-    const wSwapped = waiting?.sidesSwapped ?? false
-    const wPhysLeft = waiting ? (wSwapped ? waiting.rightTeam : waiting.leftTeam) : null
-    const wPhysRight = waiting ? (wSwapped ? waiting.leftTeam : waiting.rightTeam) : null
 
     try {
       await fetch("/api/live-state", {
@@ -193,19 +189,21 @@ export function useMatchControl(eventId: string) {
           game_timer_sec: active?.gameTimerSec ?? 0,
           timer_mode: active?.timerMode ?? "IDLE",
           timer_running: active?.timerMode === "BREAK" || active?.timerMode === "GAME",
-          left_score: physLeftTeam?.score ?? 0,
-          right_score: physRightTeam?.score ?? 0,
-          left_team_name: physLeftTeam?.name ?? "",
-          right_team_name: physRightTeam?.name ?? "",
-          left_team_logo_path: physLeftTeam?.logoPath ?? null,
-          right_team_logo_path: physRightTeam?.logoPath ?? null,
+          left_score: active?.leftTeam.score ?? 0,
+          right_score: active?.rightTeam.score ?? 0,
+          left_team_name: active?.leftTeam.name ?? "",
+          right_team_name: active?.rightTeam.name ?? "",
+          left_team_logo_path: active?.leftTeam.logoPath ?? null,
+          right_team_logo_path: active?.rightTeam.logoPath ?? null,
+          left_entry_side: aSwapped ? "blue" : "red",
+          right_entry_side: aSwapped ? "red" : "blue",
           waiting_match_id: waiting?.matchId ?? null,
-          waiting_left_score: wPhysLeft?.score ?? 0,
-          waiting_right_score: wPhysRight?.score ?? 0,
-          waiting_left_team_name: wPhysLeft?.name ?? "",
-          waiting_right_team_name: wPhysRight?.name ?? "",
-          waiting_left_team_logo_path: wPhysLeft?.logoPath ?? null,
-          waiting_right_team_logo_path: wPhysRight?.logoPath ?? null,
+          waiting_left_score: waiting?.leftTeam.score ?? 0,
+          waiting_right_score: waiting?.rightTeam.score ?? 0,
+          waiting_left_team_name: waiting?.leftTeam.name ?? "",
+          waiting_right_team_name: waiting?.rightTeam.name ?? "",
+          waiting_left_team_logo_path: waiting?.leftTeam.logoPath ?? null,
+          waiting_right_team_logo_path: waiting?.rightTeam.logoPath ?? null,
           category: active?.category ?? "",
         }),
       })
@@ -337,23 +335,29 @@ export function useMatchControl(eventId: string) {
         if (match.timerMode === "GAME" && match.gameTimerSec > 0) {
           const newGame = match.gameTimerSec - 1
 
-          // Game timer reached zero -> finish match, except tied SEMI/FINAL (overtime eligible).
+          // Game timer reached zero -> finish match, except tied SEMI/FINAL (automatic overtime).
           if (newGame === 0) {
             const isTie = match.leftTeam.score === match.rightTeam.score
-            if (canUseOvertime(match) && isTie) {
-              emitOnce(`game:${match.matchId}:overtime`, () =>
-                playSequence({ preBeeps: BEEP_3_LONG, wav: "overtime" })
+            if (canUseOvertime(match) && isTie && !match.isOvertime) {
+              emitOnce(`game:${match.matchId}:overtime:stop`, () =>
+                playSequence({ preBeeps: BEEP_3_LONG, wav: "game-stop" })
               )
-              const overtimeSeconds = match.isOvertime ? 120 : 300
+              emitOnce(`game:${match.matchId}:overtime:start`, () =>
+                playWav("overtime")
+              )
               const updated = {
                 ...prev,
                 [matchKey]: {
                   ...match,
-                  gameTimerSec: 0,
-                  timerMode: "PAUSED" as TimerMode,
-                  nextOvertimeSec: overtimeSeconds,
+                  breakTimerSec: getSingleMatchBreakStartSec(120),
+                  gameTimerSec: 5 * 60,
+                  timerMode: "BREAK" as TimerMode,
+                  isOvertime: true,
+                  nextOvertimeSec: null,
                 },
+                pendingDecision: null,
               }
+              breakSoundsPlayedRef.current.clear()
               syncLiveState(updated)
               return updated
             }
@@ -626,6 +630,54 @@ export function useMatchControl(eventId: string) {
     [prime, emitOnce, playSequence, saveScore, scheduleSwitchAnnouncement, state.activeSlot, state.blockId]
   )
 
+  const approveStoppedPoint = useCallback(
+    (side: "left" | "right") => {
+      prime()
+      emitOnce(`ui:approve:fromStop:${state.activeSlot}:${state.blockId}:${side}:${Date.now()}`, () =>
+        playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
+      )
+
+      setState((prev) => {
+        if (!prev.pendingDecision?.fromStop) return prev
+        const slot = prev.activeSlot
+        const matchKey = slot === "A" ? "matchA" : "matchB"
+        const match = prev[matchKey]
+        if (!match || match.timerMode !== "PAUSED") return prev
+
+        const teamKey = side === "left" ? "leftTeam" : "rightTeam"
+        const newScore = match[teamKey].score + 1
+        const updatedMatch: MatchState = {
+          ...match,
+          [teamKey]: { ...match[teamKey], score: newScore },
+          sidesSwapped: !match.sidesSwapped,
+          timerMode: "IDLE" as TimerMode,
+        }
+
+        const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
+        if (isFinished) {
+          updatedMatch.isFinished = true
+          const winnerTeamId = match[teamKey].id
+          const resultType = side === "left" ? "LEFT_WIN" : "RIGHT_WIN"
+          saveScore(match.matchId, updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match.gameTimerSec, true, resultType, winnerTeamId)
+        } else {
+          saveScore(match.matchId, updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match.gameTimerSec, false)
+        }
+
+        breakSoundsPlayedRef.current.clear()
+        const result = resolvePostPoint(prev, matchKey, updatedMatch, isFinished)
+
+        if (isFinished) {
+          scheduleGameFinished(match.matchId)
+        } else if (result.activeSlot !== prev.activeSlot) {
+          scheduleSwitchAnnouncement(prev.activeSlot, result.activeSlot, prev.blockId, updatedMatch.matchId)
+        }
+
+        return result
+      })
+    },
+    [prime, emitOnce, playSequence, saveScore, scheduleGameFinished, scheduleSwitchAnnouncement, state.activeSlot, state.blockId]
+  )
+
   // Approve point (2 beeps + point-approved.wav)
   const approvePoint = useCallback(() => {
     prime()
@@ -884,6 +936,7 @@ export function useMatchControl(eventId: string) {
     setScore,
     handleBase,
     handleConcede,
+    approveStoppedPoint,
     approvePoint,
     reversePoint,
     noPoint,

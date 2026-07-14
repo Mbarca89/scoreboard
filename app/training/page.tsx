@@ -36,7 +36,7 @@ function formatTime(seconds: number) {
 
 function TrainingView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
 
   const { prime, playWav, playBeeps, playSequence } = useAudio()
 

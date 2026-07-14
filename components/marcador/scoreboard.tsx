@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import type { MatchLiveState, TimerMode } from "@/lib/types"
 import { Shield } from "lucide-react"
+import { Badge } from "../ui/badge"
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -25,6 +26,15 @@ function getModeLabel(mode: TimerMode): string {
 }
 
 /* ── High-contrast colors for outdoor sun visibility ── */
+function SideBadge({ side }: { side: "red" | "blue" }) {
+  const className =
+    side === "red"
+      ? "h-3 w-full max-w-[25rem] border-transparent bg-red-600"
+      : "h-3 w-full max-w-[25rem] border-transparent bg-blue-600"
+
+  return <Badge className={className} aria-label={side === "red" ? "Lado rojo" : "Lado azul"} />
+}
+
 const MODE_STYLES: Record<TimerMode | string, { text: string; bg: string }> = {
   BREAK: { text: "text-amber-300", bg: "bg-amber-300/15" },
   GAME: { text: "text-cyan-300", bg: "bg-cyan-300/10" },
@@ -205,12 +215,14 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
   const isBreak = mode === "BREAK"
   const hasWaiting = !!data.waiting_match_id
   const style = MODE_STYLES[mode] ?? MODE_STYLES.IDLE
+  const leftEntrySide = data.left_entry_side ?? "red"
+  const rightEntrySide = data.right_entry_side ?? "blue"
 
   return (
     <div className="flex min-h-screen flex-col bg-black">
       {/* ── Break timer banner ── */}
       {isBreak && (
-        <div className={`flex flex-col items-center justify-center gap-1 px-8 py-6 ${style.bg}`}>
+        <div className={`flex flex-col items-center justify-center gap-1 px-8 py-6 absolute left-0 right-0 top-0 z-10`}>
           <span className="text-xs font-black uppercase tracking-[0.5em] text-amber-300">
             Break - Tiempo para entrar
           </span>
@@ -223,26 +235,13 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
       {/* ── Main scoreboard ── */}
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
         {/* Category + AXL logo */}
-        <div className="flex items-center gap-3">
-          <Image
-            src="/images/axl-logo.png"
-            alt="AXL"
-            width={36}
-            height={36}
-            className="opacity-80"
-            unoptimized
-          />
-          {data.category && (
-            <span className="text-xs font-black uppercase tracking-[0.4em] text-neutral-400">
-              {data.category}
-            </span>
-          )}
-        </div>
+
 
         {/* Teams + Score row */}
         <div className="flex w-full items-center justify-between gap-4 md:gap-8">
           {/* Left team */}
           <div className="flex flex-col flex-1 items-center justify-end gap-4">
+            <SideBadge side={leftEntrySide} />
             <TeamLogo
               src={data.left_team_logo_path}
               alt={data.left_team_name}
@@ -251,21 +250,41 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
             <h2 className="text-right text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
               {data.left_team_name}
             </h2>
+            <SideBadge side={leftEntrySide} />
           </div>
 
           {/* Score */}
-          <div className="flex items-center gap-3 md:gap-5">
-            <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
-              {data.left_score}
-            </span>
-            <span className="text-4xl font-black text-neutral-600 md:text-6xl">:</span>
-            <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
-              {data.right_score}
-            </span>
+          <div className={`flex flex-col items-center gap-6 rounded-lg px-8 py-6`}>
+
+            <div className="flex items-center gap-3 md:gap-5">
+              <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
+                {data.left_score}
+              </span>
+              <span className="text-4xl font-black text-neutral-600 md:text-6xl">:</span>
+              <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
+                {data.right_score}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <Image
+                src="/images/axl-logo.png"
+                alt="AXL"
+                width={36}
+                height={36}
+                className="opacity-80"
+                unoptimized
+              />
+              {data.category && (
+                <span className="text-xs font-black uppercase tracking-[0.4em] text-neutral-400">
+                  {data.category}
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Right team */}
           <div className="flex flex-col flex-1 items-center justify-start gap-4">
+            <SideBadge side={rightEntrySide} />
             <TeamLogo
               src={data.right_team_logo_path}
               alt={data.right_team_name}
@@ -274,6 +293,7 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
             <h2 className="text-left text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
               {data.right_team_name}
             </h2>
+            <SideBadge side={rightEntrySide} />
           </div>
         </div>
 
@@ -281,8 +301,8 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
         <div className="flex flex-col items-center gap-1">
           <span
             className={`font-mono font-black tracking-tight ${isBreak
-                ? "text-2xl text-neutral-500 md:text-3xl"
-                : `text-5xl md:text-7xl ${style.text}`
+              ? "text-2xl text-neutral-500 md:text-3xl"
+              : `text-5xl md:text-7xl ${style.text}`
               }`}
             style={!isBreak ? { textShadow: "0 0 20px currentColor" } : undefined}
           >

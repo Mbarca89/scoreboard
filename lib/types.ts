@@ -74,6 +74,8 @@ export interface MatchLiveState {
   right_team_name: string
   left_team_logo_path: string | null
   right_team_logo_path: string | null
+  left_entry_side: "red" | "blue"
+  right_entry_side: "red" | "blue"
   waiting_match_id: string | null
   waiting_left_score: number
   waiting_right_score: number

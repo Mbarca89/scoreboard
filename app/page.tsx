@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Monitor, Tv, List, Trophy, Dumbbell } from "lucide-react"
+import { Monitor, Tv, List, Trophy, Dumbbell, SquarePower, Swords } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -9,9 +9,9 @@ export default function HomePage() {
         <p className="text-sm text-muted-foreground">Sistema de control de partidos</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Link
-          href="/control?eventId=axl-2026-fecha-1"
+          href="/control?eventId=axl-2026-fecha-2"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Monitor className="h-8 w-8 text-primary" />
@@ -22,7 +22,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/marcador?eventId=axl-2026-fecha-1"
+          href="/marcador?eventId=axl-2026-fecha-2"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Tv className="h-8 w-8 text-accent" />
@@ -33,7 +33,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/fixture?eventId=axl-2026-fecha-1"
+          href="/fixture?eventId=axl-2026-fecha-2"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <List className="h-8 w-8 text-chart-3" />
@@ -44,7 +44,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/scores?eventId=axl-2026-fecha-1"
+          href="/scores?eventId=axl-2026-fecha-2"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Trophy className="h-8 w-8 text-chart-2" />
@@ -55,13 +55,33 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/training?eventId=axl-2026-fecha-1"
+          href="/training?eventId=axl-2026-fecha-2"
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Dumbbell className="h-8 w-8 text-emerald-400" />
           <span className="text-sm font-semibold text-foreground">Modo entrenamiento</span>
           <span className="text-center text-xs text-muted-foreground">
             Cronómetro y botonera de práctica
+          </span>
+        </Link>
+        <Link
+          href="/torneito"
+          className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
+        >
+          <Swords className="h-8 w-8 text-chart-2" />
+          <span className="text-sm font-semibold text-foreground">Torneito 1vs1</span>
+          <span className="text-center text-xs text-muted-foreground">
+            Fixture local y mesa split deck
+          </span>
+        </Link>
+        <Link
+          href="/buttonTest"
+          className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
+        >
+          <SquarePower className="h-8 w-8 text-emerald-400" />
+          <span className="text-sm font-semibold text-foreground">Modo prueba</span>
+          <span className="text-center text-xs text-muted-foreground">
+            Prueba de botones
           </span>
         </Link>
       </div>

@@ -7,7 +7,7 @@ import { BracketManager } from "@/components/scores/bracket-manager"
 
 function ScoresView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-1"
+  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
 
   return (
     <div className="min-h-screen bg-background p-6">

@@ -70,31 +70,35 @@ export function BracketManager({ eventId }: { eventId: string }) {
     try {
       const aBye = form.aBye || form.aRight === "BYE"
       const bBye = form.bBye || form.bRight === "BYE"
+      const payloadMatches = [
+        {
+          leftTeamId: form.aLeft,
+          leftTeamName: byId[form.aLeft]?.name,
+          leftTeamLogoKey: byId[form.aLeft]?.logoKey,
+          rightTeamId: aBye ? "BYE" : form.aRight,
+          rightTeamName: aBye ? "BYE" : byId[form.aRight]?.name,
+          rightTeamLogoKey: aBye ? null : byId[form.aRight]?.logoKey,
+          isBye: aBye,
+        },
+      ]
+
+      if (form.bLeft || !bBye) {
+        payloadMatches.push({
+          leftTeamId: form.bLeft,
+          leftTeamName: byId[form.bLeft]?.name,
+          leftTeamLogoKey: byId[form.bLeft]?.logoKey,
+          rightTeamId: bBye ? "BYE" : form.bRight,
+          rightTeamName: bBye ? "BYE" : byId[form.bRight]?.name,
+          rightTeamLogoKey: bBye ? null : byId[form.bRight]?.logoKey,
+          isBye: bBye,
+        })
+      }
 
       const payload = {
         eventId,
         category,
         stage,
-        matches: [
-          {
-            leftTeamId: form.aLeft,
-            leftTeamName: byId[form.aLeft]?.name,
-            leftTeamLogoKey: byId[form.aLeft]?.logoKey,
-            rightTeamId: aBye ? "BYE" : form.aRight,
-            rightTeamName: aBye ? "BYE" : byId[form.aRight]?.name,
-            rightTeamLogoKey: aBye ? null : byId[form.aRight]?.logoKey,
-            isBye: aBye,
-          },
-          {
-            leftTeamId: form.bLeft,
-            leftTeamName: byId[form.bLeft]?.name,
-            leftTeamLogoKey: byId[form.bLeft]?.logoKey,
-            rightTeamId: bBye ? "BYE" : form.bRight,
-            rightTeamName: bBye ? "BYE" : byId[form.bRight]?.name,
-            rightTeamLogoKey: bBye ? null : byId[form.bRight]?.logoKey,
-            isBye: bBye,
-          },
-        ],
+        matches: payloadMatches,
       }
 
       const res = await fetch("/api/bracket", {
@@ -161,11 +165,17 @@ export function BracketManager({ eventId }: { eventId: string }) {
                   }))
                 }
               />
-              BYE (partido terminado automáticamente)
+              {isA ? "BYE (partido terminado automaticamente)" : "BYE / bloquear partido B"}
             </label>
             <div className="space-y-1">
               <TeamSelect value={right} disabled={bye} onChange={(val) => setForm((f) => ({ ...f, [rightKey]: val }))} teams={teams} />
-              {bye && <p className="text-[11px] text-muted-foreground">Partido bloqueado como BYE (se completa automáticamente).</p>}
+              {bye && (
+                <p className="text-[11px] text-muted-foreground">
+                  {isA || left
+                    ? "Partido bloqueado como BYE (se completa automaticamente)."
+                    : "No se creara el partido B; el bloque queda solamente con el partido A."}
+                </p>
+              )}
             </div>
           </div>
         )
