@@ -228,11 +228,11 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
     <div className="flex min-h-dvh flex-col overflow-y-auto bg-black">
       {/* ── Break timer banner ── */}
       {isBreak && (
-        <div className="absolute left-0 right-0 top-0 z-10 flex flex-col items-center justify-center gap-1 px-[clamp(1rem,4vmin,2rem)] py-[clamp(0.75rem,3vmin,1.5rem)]">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1 px-[clamp(1rem,4vmin,2rem)] pb-[clamp(0.25rem,1vmin,0.5rem)] pt-[clamp(0.5rem,2vmin,1rem)]">
           <span className="text-xs font-black uppercase tracking-[0.5em] text-amber-300">
             Break - Tiempo para entrar
           </span>
-          <span className="font-mono text-[clamp(4rem,18vmin,10rem)] font-black tracking-tight text-amber-300">
+          <span className="font-mono text-[clamp(3.5rem,15vmin,9rem)] font-black leading-none tracking-tight text-amber-300">
             {formatTime(displayedTimers.breakTimerSec)}
           </span>
         </div>
@@ -328,13 +328,13 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
       {/* ── Waiting match (bottom bar) ── */}
       {hasWaiting && (
         <div className="shrink-0 border-t border-neutral-800 bg-neutral-950 px-[clamp(1rem,4vmin,1.5rem)] py-[clamp(0.5rem,1.5vmin,0.75rem)]">
-          <div className="mx-auto flex max-w-2xl items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="mx-auto grid max-w-2xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2">
               <WaitingTeamLogo
                 src={data.waiting_left_team_logo_path}
                 alt={data.waiting_left_team_name}
               />
-              <span className="text-sm font-bold text-neutral-400">
+              <span className="truncate text-sm font-bold text-neutral-400">
                 {data.waiting_left_team_name}
               </span>
             </div>
@@ -347,8 +347,8 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
                 {data.waiting_right_score}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-neutral-400">
+            <div className="flex min-w-0 items-center justify-end gap-2">
+              <span className="truncate text-right text-sm font-bold text-neutral-400">
                 {data.waiting_right_team_name}
               </span>
               <WaitingTeamLogo
@@ -357,9 +357,9 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
               />
             </div>
           </div>
-          <p className="mt-1 text-center text-[10px] font-bold uppercase tracking-[0.4em] text-neutral-600">
+          {/* <p className="mt-1 pl-[0.4em] text-center text-[10px] font-bold uppercase tracking-[0.4em] text-neutral-600">
             En espera
-          </p>
+          </p> */}
         </div>
       )}
     </div>
