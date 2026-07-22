@@ -49,7 +49,7 @@ function TeamLogo({
 }: {
   src: string | null | undefined
   alt: string
-  size?: number
+  size?: number | string
 }) {
   const [error, setError] = useState(false)
 
@@ -59,7 +59,13 @@ function TeamLogo({
         className="flex items-center justify-center rounded-lg border-2 border-neutral-700 bg-neutral-800"
         style={{ width: size, height: size }}
       >
-        <Shield className="text-neutral-500" style={{ width: size * 0.5, height: size * 0.5 }} />
+        <Shield
+          className="text-neutral-500"
+          style={{
+            width: typeof size === "number" ? size * 0.5 : "50%",
+            height: typeof size === "number" ? size * 0.5 : "50%",
+          }}
+        />
       </div>
     )
   }
@@ -219,49 +225,49 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
   const rightEntrySide = data.right_entry_side ?? "blue"
 
   return (
-    <div className="flex min-h-screen flex-col bg-black">
+    <div className="flex min-h-dvh flex-col overflow-y-auto bg-black">
       {/* ── Break timer banner ── */}
       {isBreak && (
-        <div className={`flex flex-col items-center justify-center gap-1 px-8 py-6 absolute left-0 right-0 top-0 z-10`}>
+        <div className="absolute left-0 right-0 top-0 z-10 flex flex-col items-center justify-center gap-1 px-[clamp(1rem,4vmin,2rem)] py-[clamp(0.75rem,3vmin,1.5rem)]">
           <span className="text-xs font-black uppercase tracking-[0.5em] text-amber-300">
             Break - Tiempo para entrar
           </span>
-          <span className="font-mono text-8xl font-black tracking-tight text-amber-300 md:text-[10rem]">
+          <span className="font-mono text-[clamp(4rem,18vmin,10rem)] font-black tracking-tight text-amber-300">
             {formatTime(displayedTimers.breakTimerSec)}
           </span>
         </div>
       )}
 
       {/* ── Main scoreboard ── */}
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-[clamp(0.5rem,2vmin,1rem)] px-[clamp(1rem,4vmin,3rem)] py-2">
         {/* Category + AXL logo */}
 
 
         {/* Teams + Score row */}
-        <div className="flex w-full items-center justify-between gap-4 md:gap-8">
+        <div className="flex w-full min-w-0 items-center justify-between gap-[clamp(0.5rem,2.5vmin,2rem)]">
           {/* Left team */}
-          <div className="flex flex-col flex-1 items-center justify-end gap-4">
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-end gap-[clamp(0.5rem,2vmin,1rem)]">
             <SideBadge side={leftEntrySide} />
             <TeamLogo
               src={data.left_team_logo_path}
               alt={data.left_team_name}
-              size={288}
+              size="clamp(8rem, 27vmin, 18rem)"
             />
-            <h2 className="text-right text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
+            <h2 className="w-full truncate text-center text-[clamp(1.25rem,4vmin,3rem)] font-black uppercase tracking-wide text-white">
               {data.left_team_name}
             </h2>
             <SideBadge side={leftEntrySide} />
           </div>
 
           {/* Score */}
-          <div className={`flex flex-col items-center gap-6 rounded-lg px-8 py-6`}>
+          <div className="flex shrink-0 flex-col items-center gap-[clamp(0.75rem,3vmin,1.5rem)] rounded-lg px-[clamp(0.5rem,3vmin,2rem)] py-[clamp(0.5rem,2vmin,1.5rem)]">
 
-            <div className="flex items-center gap-3 md:gap-5">
-              <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
+            <div className="flex items-center gap-[clamp(0.5rem,2vmin,1.25rem)]">
+              <span className="font-mono text-[clamp(4rem,14vmin,8rem)] font-black text-white" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
                 {data.left_score}
               </span>
-              <span className="text-4xl font-black text-neutral-600 md:text-6xl">:</span>
-              <span className="font-mono text-7xl font-black text-white md:text-9xl" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
+              <span className="text-[clamp(2rem,7vmin,3.75rem)] font-black text-neutral-600">:</span>
+              <span className="font-mono text-[clamp(4rem,14vmin,8rem)] font-black text-white" style={{ textShadow: "0 0 30px rgba(255,255,255,0.3)" }}>
                 {data.right_score}
               </span>
             </div>
@@ -283,14 +289,14 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
           </div>
 
           {/* Right team */}
-          <div className="flex flex-col flex-1 items-center justify-start gap-4">
+          <div className="flex min-w-0 flex-1 flex-col items-center justify-start gap-[clamp(0.5rem,2vmin,1rem)]">
             <SideBadge side={rightEntrySide} />
             <TeamLogo
               src={data.right_team_logo_path}
               alt={data.right_team_name}
-              size={288}
+              size="clamp(8rem, 27vmin, 18rem)"
             />
-            <h2 className="text-left text-2xl font-black uppercase tracking-wide text-white md:text-4xl lg:text-5xl">
+            <h2 className="w-full truncate text-center text-[clamp(1.25rem,4vmin,3rem)] font-black uppercase tracking-wide text-white">
               {data.right_team_name}
             </h2>
             <SideBadge side={rightEntrySide} />
@@ -301,8 +307,8 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
         <div className="flex flex-col items-center gap-1">
           <span
             className={`font-mono font-black tracking-tight ${isBreak
-              ? "text-2xl text-neutral-500 md:text-3xl"
-              : `text-5xl md:text-7xl ${style.text}`
+              ? "text-[clamp(1.5rem,4vmin,1.875rem)] text-neutral-500"
+              : `text-[clamp(3rem,9vmin,4.5rem)] ${style.text}`
               }`}
             style={!isBreak ? { textShadow: "0 0 20px currentColor" } : undefined}
           >
@@ -321,7 +327,7 @@ export function Scoreboard({ eventId }: ScoreboardProps) {
 
       {/* ── Waiting match (bottom bar) ── */}
       {hasWaiting && (
-        <div className="border-t border-neutral-800 bg-neutral-950 px-6 py-3">
+        <div className="shrink-0 border-t border-neutral-800 bg-neutral-950 px-[clamp(1rem,4vmin,1.5rem)] py-[clamp(0.5rem,1.5vmin,0.75rem)]">
           <div className="mx-auto flex max-w-2xl items-center justify-between">
             <div className="flex items-center gap-2">
               <WaitingTeamLogo
