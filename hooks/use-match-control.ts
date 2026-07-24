@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import type { AXLSlot, ControlState, Match, MatchState, TimerMode } from "@/lib/types"
-import { getRulesForCategory } from "@/lib/category-rules"
+import { getRulesForCategory, hasReachedWinningScore } from "@/lib/category-rules"
 import { useAudio } from "./use-audio"
 
 function buildMatchState(m: Match): MatchState {
@@ -32,6 +32,7 @@ function buildMatchState(m: Match): MatchState {
     isFinished: m.is_finished,
     category: m.category,
     maxPoints: rules.maxPoints,
+    winCondition: rules.winCondition,
     maxGameTimeSec: rules.gameTimeSec,
     isOvertime: m.is_overtime,
     nextOvertimeSec: null,
@@ -605,7 +606,9 @@ export function useMatchControl(eventId: string) {
           timerMode: "IDLE" as TimerMode,
         }
 
-        const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
+        const isFinished = match.isOvertime
+          ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score
+          : hasReachedWinningScore(updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match)
         if (isFinished) {
           updatedMatch.isFinished = true
           const winnerTeamId = match[scoringKey].id
@@ -653,7 +656,9 @@ export function useMatchControl(eventId: string) {
           timerMode: "IDLE" as TimerMode,
         }
 
-        const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
+        const isFinished = match.isOvertime
+          ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score
+          : hasReachedWinningScore(updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match)
         if (isFinished) {
           updatedMatch.isFinished = true
           const winnerTeamId = match[teamKey].id
@@ -702,7 +707,9 @@ export function useMatchControl(eventId: string) {
         timerMode: "IDLE" as TimerMode,
       }
 
-      const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
+      const isFinished = match.isOvertime
+        ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score
+        : hasReachedWinningScore(updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match)
       if (isFinished) {
         updatedMatch.isFinished = true
         const winnerTeamId = match[teamKey].id
@@ -749,7 +756,9 @@ export function useMatchControl(eventId: string) {
         timerMode: "IDLE" as TimerMode,
       }
 
-      const isFinished = match.isOvertime ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score : newScore >= match.maxPoints
+      const isFinished = match.isOvertime
+        ? updatedMatch.leftTeam.score !== updatedMatch.rightTeam.score
+        : hasReachedWinningScore(updatedMatch.leftTeam.score, updatedMatch.rightTeam.score, match)
       if (isFinished) {
         updatedMatch.isFinished = true
         const winnerTeamId = match[oppositeKey].id
@@ -861,6 +870,37 @@ export function useMatchControl(eventId: string) {
     })
   }, [prime, emitOnce, playSequence, canUseOvertime, state.activeSlot, state.blockId])
 
+  const reopenMatch = useCallback(() => {
+    setState((prev) => {
+      const matchKey = prev.activeSlot === "A" ? "matchA" : "matchB"
+      const match = prev[matchKey]
+      if (!match || !match.isFinished) return prev
+
+      const reopenedMatch: MatchState = {
+        ...match,
+        isFinished: false,
+        timerMode: "IDLE",
+        isOvertime: false,
+        nextOvertimeSec: null,
+      }
+
+      saveScore(
+        match.matchId,
+        reopenedMatch.leftTeam.score,
+        reopenedMatch.rightTeam.score,
+        reopenedMatch.gameTimerSec,
+        false
+      )
+
+      return {
+        ...prev,
+        [matchKey]: reopenedMatch,
+        pendingDecision: null,
+        singleMatchMode: false,
+      }
+    })
+  }, [saveScore])
+
   // Timeout (2 beeps + timeout.wav) y suma 60s al break
   const useTimeout = useCallback(
     (slot: AXLSlot, side: "left" | "right") => {
@@ -905,7 +945,10 @@ export function useMatchControl(eventId: string) {
         const match = prev[matchKey]
         if (!match) return prev
         const teamKey = side === "left" ? "leftTeam" : "rightTeam"
-        const clamped = Math.max(0, Math.min(match.maxPoints, newScore))
+        const clamped =
+          match.winCondition === "race"
+            ? Math.max(0, Math.min(match.maxPoints, newScore))
+            : Math.max(0, newScore)
         const updated = {
           ...prev,
           [matchKey]: {
@@ -942,6 +985,7 @@ export function useMatchControl(eventId: string) {
     noPoint,
     resumeStoppedGame,
     startOvertime,
+    reopenMatch,
     useTimeout,
   }
 }

@@ -322,6 +322,7 @@ function buildMatchState(tournament: LocalTournament, match: LocalMatch): MatchS
     isFinished: match.isFinished,
     category: "3v3 D6",
     maxPoints: MAX_POINTS,
+    winCondition: "race",
     maxGameTimeSec: GAME_TIME_SEC,
     isOvertime: false,
     nextOvertimeSec: null,

@@ -56,6 +56,7 @@ function ControlBoard() {
     noPoint,
     resumeStoppedGame,
     startOvertime,
+    reopenMatch,
     useTimeout,
   } = useMatchControl(eventId)
 
@@ -268,6 +269,7 @@ function ControlBoard() {
             onSetBreak={setBreakTimer}
             onSetGameTimer={setGameTimer}
             onStartOvertime={startOvertime}
+            onReopenMatch={reopenMatch}
             onCampoActivo={() => {}}
             hasPendingDecision={hasPendingDecision}
           />

@@ -110,14 +110,16 @@ export function TeamPanel({
               size="sm"
               className="h-10 w-10 p-0"
               onClick={onScoreUp}
-              disabled={team.score >= match.maxPoints}
+              disabled={match.winCondition === "race" && team.score >= match.maxPoints}
             >
               <Plus className="h-4 w-4" />
             </Button>
           )}
         </div>
         <span className="mt-1 text-xs text-muted-foreground">
-          / {match.maxPoints} pts
+          {match.winCondition === "mercy"
+            ? `Mercy: diferencia de ${match.maxPoints}`
+            : `/ ${match.maxPoints} pts`}
         </span>
       </div>
 

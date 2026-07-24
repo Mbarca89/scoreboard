@@ -110,6 +110,7 @@ export interface MatchState {
   isFinished: boolean
   category: AXLCategory
   maxPoints: number
+  winCondition: "race" | "mercy"
   maxGameTimeSec: number
   isOvertime: boolean
   nextOvertimeSec: number | null

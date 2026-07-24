@@ -30,7 +30,11 @@ export async function POST(
       UPDATE matches SET
         left_score = ${leftScore},
         right_score = ${rightScore},
-        time_remaining_sec = ${timeRemainingSec}
+        time_remaining_sec = ${timeRemainingSec},
+        is_finished = FALSE,
+        result_type = NULL,
+        winner_team_id = NULL,
+        finished_at = NULL
       WHERE event_id = ${eventId} AND match_id = ${matchId}
     `
   }
