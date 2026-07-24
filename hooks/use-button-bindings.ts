@@ -1,0 +1,47 @@
+"use client"
+
+import { useCallback, useEffect, useState } from "react"
+import {
+  DEFAULT_BUTTON_BINDINGS,
+  type ButtonAction,
+  type ButtonBindings,
+} from "@/lib/button-bindings"
+
+export function useButtonBindings() {
+  const [bindings, setBindings] = useState<ButtonBindings>(DEFAULT_BUTTON_BINDINGS)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/button-bindings", { cache: "no-store" })
+      const body = await response.json()
+      if (!response.ok) throw new Error(body.error ?? "No se pudo cargar el emparejamiento")
+      setBindings(body.bindings)
+      setError(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Error de configuración")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const pair = useCallback(async (action: ButtonAction, buttonId: number) => {
+    const response = await fetch("/api/button-bindings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, buttonId }),
+    })
+    const body = await response.json()
+    if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el emparejamiento")
+    setBindings(body.bindings)
+    setError(null)
+  }, [])
+
+  return { bindings, loading, error, pair, reload: load }
+}

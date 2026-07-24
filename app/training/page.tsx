@@ -3,6 +3,8 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAudio } from "@/hooks/use-audio"
+import { useButtonBindings } from "@/hooks/use-button-bindings"
+import { actionForButtonId } from "@/lib/button-bindings"
 
 type TrainingMode = "IDLE" | "READY_COUNTDOWN" | "GAME"
 
@@ -48,6 +50,7 @@ function TrainingView() {
   const [socketConnected, setSocketConnected] = useState(false)
   const [socketError, setSocketError] = useState<string | null>(null)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
+  const { bindings: buttonBindings, loading: buttonBindingsLoading } = useButtonBindings()
 
   const audioOnceRef = useRef<Set<string>>(new Set())
   const emitOnce = useCallback((key: string, fn: () => void) => {
@@ -201,10 +204,13 @@ function TrainingView() {
 
         setLastButtonId(maybeButtonId)
 
-        if (maybeButtonId === 1) onBaseButton("left")
-        if (maybeButtonId === 2) onPitButton()
-        if (maybeButtonId === 3) onBaseButton("right")
-        if (maybeButtonId === 4) onPitButton()
+        if (buttonBindingsLoading) return
+
+        const action = actionForButtonId(buttonBindings, maybeButtonId)
+        if (action === "BASE_LEFT") onBaseButton("left")
+        if (action === "PIT_LEFT") onPitButton()
+        if (action === "BASE_RIGHT") onBaseButton("right")
+        if (action === "PIT_RIGHT") onPitButton()
       }
 
       socket.on("connect", onConnect)
@@ -228,7 +234,7 @@ function TrainingView() {
       isMounted = false
       if (socket) socket.disconnect()
     }
-  }, [onBaseButton, onPitButton])
+  }, [buttonBindings, buttonBindingsLoading, onBaseButton, onPitButton])
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-6">
@@ -273,10 +279,10 @@ function TrainingView() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <button onClick={() => onBaseButton("left")} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Base izquierda (btn 1)</button>
-        <button onClick={() => onBaseButton("right")} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Base derecha (btn 3)</button>
-        <button onClick={onPitButton} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Pit izquierdo conceder (btn 2)</button>
-        <button onClick={onPitButton} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Pit derecho conceder (btn 4)</button>
+        <button onClick={() => onBaseButton("left")} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Base izquierda (btn {buttonBindings.BASE_LEFT})</button>
+        <button onClick={() => onBaseButton("right")} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Base derecha (btn {buttonBindings.BASE_RIGHT})</button>
+        <button onClick={onPitButton} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Pit izquierdo conceder (btn {buttonBindings.PIT_LEFT})</button>
+        <button onClick={onPitButton} className="rounded-lg border border-border bg-card px-4 py-3 text-sm font-semibold hover:bg-card/80">Pit derecho conceder (btn {buttonBindings.PIT_RIGHT})</button>
       </div>
     </div>
   )

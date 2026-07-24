@@ -6,6 +6,8 @@ import { TimerControl } from "@/components/control/timer-control"
 import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
 import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
+import { useButtonBindings } from "@/hooks/use-button-bindings"
+import { actionForButtonId } from "@/lib/button-bindings"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 
@@ -61,6 +63,7 @@ function ControlBoard() {
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
   const [socketError, setSocketError] = useState<string | null>(null)
   const lastSocketEventRef = useRef<{ buttonId: number; ts: number } | null>(null)
+  const { bindings: buttonBindings, loading: buttonBindingsLoading } = useButtonBindings()
 
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
@@ -163,17 +166,19 @@ function ControlBoard() {
 
         setLastButtonId(maybeButtonId)
 
-        switch (maybeButtonId) {
-          case 1:
+        if (buttonBindingsLoading) return
+
+        switch (actionForButtonId(buttonBindings, maybeButtonId)) {
+          case "BASE_LEFT":
             handleBaseSideButton("left")
             break
-          case 2:
+          case "PIT_LEFT":
             handlePitSideButton("left")
             break
-          case 3:
+          case "BASE_RIGHT":
             handleBaseSideButton("right")
             break
-          case 4:
+          case "PIT_RIGHT":
             handlePitSideButton("right")
             break
           default:
@@ -204,7 +209,7 @@ function ControlBoard() {
         socket.disconnect()
       }
     }
-  }, [handleBaseSideButton, handlePitSideButton])
+  }, [buttonBindings, buttonBindingsLoading, handleBaseSideButton, handlePitSideButton])
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">

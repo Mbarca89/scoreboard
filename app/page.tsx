@@ -79,9 +79,9 @@ export default function HomePage() {
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <SquarePower className="h-8 w-8 text-emerald-400" />
-          <span className="text-sm font-semibold text-foreground">Modo prueba</span>
+          <span className="text-sm font-semibold text-foreground">Botonera</span>
           <span className="text-center text-xs text-muted-foreground">
-            Prueba de botones
+            Emparejamiento y prueba
           </span>
         </Link>
       </div>
