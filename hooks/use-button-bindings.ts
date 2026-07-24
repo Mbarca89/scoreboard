@@ -17,7 +17,10 @@ export function useButtonBindings() {
     try {
       const response = await fetch("/api/button-bindings", { cache: "no-store" })
       const body = await readJsonResponse(response)
-      if (!response.ok) throw new Error(body.error ?? "No se pudo cargar el emparejamiento")
+      if (!response.ok) {
+        const message = body.detail ? `${body.error}: ${body.detail}` : body.error
+        throw new Error(message ?? "No se pudo cargar el emparejamiento")
+      }
       setBindings(body.bindings)
       setError(null)
     } catch (cause) {
@@ -38,7 +41,10 @@ export function useButtonBindings() {
       body: JSON.stringify({ action, buttonId }),
     })
     const body = await readJsonResponse(response)
-    if (!response.ok) throw new Error(body.error ?? "No se pudo guardar el emparejamiento")
+    if (!response.ok) {
+      const message = body.detail ? `${body.error}: ${body.detail}` : body.error
+      throw new Error(message ?? "No se pudo guardar el emparejamiento")
+    }
     setBindings(body.bindings)
     setError(null)
   }, [])
