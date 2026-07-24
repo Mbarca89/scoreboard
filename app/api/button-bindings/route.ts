@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { sql } from "@/lib/db"
 import {
   BUTTON_ACTIONS,
-  DEFAULT_BUTTON_BINDINGS,
+  EMPTY_BUTTON_BINDINGS,
   isButtonAction,
   isValidButtonId,
   type ButtonBindings,
@@ -14,7 +14,7 @@ type BindingRow = {
 }
 
 function mergeBindings(rows: BindingRow[]): ButtonBindings {
-  const bindings = { ...DEFAULT_BUTTON_BINDINGS }
+  const bindings = { ...EMPTY_BUTTON_BINDINGS }
   for (const row of rows) {
     if (isButtonAction(row.action) && isValidButtonId(row.button_id)) {
       bindings[row.action] = row.button_id
@@ -54,24 +54,20 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const conflicts = await sql<BindingRow[]>`
-      SELECT action, button_id
-      FROM public.button_bindings
-      WHERE button_id = ${buttonId} AND action <> ${action}
-    `
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        { error: `El botón ${buttonId} ya está asignado a ${conflicts[0].action}` },
-        { status: 409 }
+    await sql.begin(async (transaction) => {
+      await transaction.unsafe(
+        "DELETE FROM public.button_bindings WHERE button_id = $1 AND action <> $2",
+        [buttonId, action]
       )
-    }
 
-    await sql`
-      INSERT INTO public.button_bindings (action, button_id)
-      VALUES (${action}, ${buttonId})
-      ON CONFLICT (action)
-      DO UPDATE SET button_id = EXCLUDED.button_id, updated_at = now()
-    `
+      await transaction.unsafe(
+        `INSERT INTO public.button_bindings (action, button_id)
+         VALUES ($1, $2)
+         ON CONFLICT (action)
+         DO UPDATE SET button_id = EXCLUDED.button_id, updated_at = now()`,
+        [action, buttonId]
+      )
+    })
 
     const rows = await sql<BindingRow[]>`
       SELECT action, button_id

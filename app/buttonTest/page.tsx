@@ -167,7 +167,7 @@ export default function ButtonTestPage() {
     testState[action] ? "text-emerald-400 scale-110" : "text-muted-foreground"
   const conflictingAction =
     detectedButtonId === null ? null : actionForButtonId(bindings, detectedButtonId)
-  const hasConflict =
+  const willMoveBinding =
     conflictingAction !== null &&
     pairingAction !== null &&
     bindings[pairingAction] !== detectedButtonId
@@ -214,7 +214,11 @@ export default function ButtonTestPage() {
                 <div>
                   <p className="font-semibold">{BUTTON_ACTION_LABELS[action]}</p>
                   <p className="mt-1 font-mono text-sm text-muted-foreground">
-                    {loading ? "Cargando…" : `ID ${bindings[action]}`}
+                    {loading
+                      ? "Cargando…"
+                      : bindings[action] === null
+                        ? "Sin asignar"
+                        : `ID ${bindings[action]}`}
                   </p>
                 </div>
                 <button
@@ -241,9 +245,10 @@ export default function ButtonTestPage() {
             ) : (
               <div className="mt-3">
                 <p className="text-sm">Se detectó el botón ID <strong>{detectedButtonId}</strong>.</p>
-                {hasConflict && (
-                  <p className="mt-1 text-sm text-destructive">
-                    Ese ID ya está asignado a {BUTTON_ACTION_LABELS[conflictingAction!]}.
+                {willMoveBinding && (
+                  <p className="mt-1 text-sm text-amber-500">
+                    Ese ID ya está asignado a {BUTTON_ACTION_LABELS[conflictingAction!]}. Al confirmar,
+                    se moverá a {BUTTON_ACTION_LABELS[pairingAction]} y la asignación anterior quedará vacía.
                   </p>
                 )}
               </div>
@@ -251,7 +256,7 @@ export default function ButtonTestPage() {
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                disabled={detectedButtonId === null || saving || hasConflict}
+                disabled={detectedButtonId === null || saving}
                 onClick={() => void confirmPairing()}
                 className="flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
               >
@@ -279,7 +284,9 @@ export default function ButtonTestPage() {
               <div key={action} className="flex flex-col items-center gap-2 text-center">
                 <SquareArrowDown className={`h-16 w-16 transition-all ${sideClass(action)}`} />
                 <span className="text-sm font-semibold">{BUTTON_ACTION_LABELS[action]}</span>
-                <span className="font-mono text-xs text-muted-foreground">ID {bindings[action]}</span>
+                <span className="font-mono text-xs text-muted-foreground">
+                  {bindings[action] === null ? "Sin asignar" : `ID ${bindings[action]}`}
+                </span>
               </div>
             ))}
           </div>

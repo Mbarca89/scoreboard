@@ -6,13 +6,20 @@ export const BUTTON_ACTIONS = [
 ] as const
 
 export type ButtonAction = (typeof BUTTON_ACTIONS)[number]
-export type ButtonBindings = Record<ButtonAction, number>
+export type ButtonBindings = Record<ButtonAction, number | null>
 
 export const DEFAULT_BUTTON_BINDINGS: ButtonBindings = {
   BASE_LEFT: 1,
   PIT_LEFT: 2,
   BASE_RIGHT: 3,
   PIT_RIGHT: 4,
+}
+
+export const EMPTY_BUTTON_BINDINGS: ButtonBindings = {
+  BASE_LEFT: null,
+  PIT_LEFT: null,
+  BASE_RIGHT: null,
+  PIT_RIGHT: null,
 }
 
 export const BUTTON_ACTION_LABELS: Record<ButtonAction, string> = {
