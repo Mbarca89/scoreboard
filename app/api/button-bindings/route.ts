@@ -13,18 +13,52 @@ type BindingRow = {
   button_id: number
 }
 
-export async function GET() {
-  const rows = await sql<BindingRow[]>`
-    SELECT action, button_id
-    FROM button_bindings
+async function ensureButtonBindings() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS button_bindings (
+      action TEXT PRIMARY KEY,
+      button_id SMALLINT NOT NULL UNIQUE CHECK (button_id BETWEEN 1 AND 255),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
   `
 
+  await sql`
+    INSERT INTO button_bindings (action, button_id)
+    VALUES
+      ('BASE_LEFT', 1),
+      ('PIT_LEFT', 2),
+      ('BASE_RIGHT', 3),
+      ('PIT_RIGHT', 4)
+    ON CONFLICT (action) DO NOTHING
+  `
+}
+
+function mergeBindings(rows: BindingRow[]): ButtonBindings {
   const bindings = { ...DEFAULT_BUTTON_BINDINGS }
   for (const row of rows) {
-    bindings[row.action] = row.button_id
+    if (isButtonAction(row.action) && isValidButtonId(row.button_id)) {
+      bindings[row.action] = row.button_id
+    }
   }
+  return bindings
+}
 
-  return NextResponse.json({ bindings })
+export async function GET() {
+  try {
+    await ensureButtonBindings()
+    const rows = await sql<BindingRow[]>`
+      SELECT action, button_id
+      FROM button_bindings
+    `
+
+    return NextResponse.json({ bindings: mergeBindings(rows) })
+  } catch (cause) {
+    console.error("GET /api/button-bindings failed", cause)
+    return NextResponse.json(
+      { error: "No se pudo cargar la configuración de botones" },
+      { status: 500 }
+    )
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -34,39 +68,44 @@ export async function PUT(req: NextRequest) {
 
   if (!isButtonAction(action) || !isValidButtonId(buttonId)) {
     return NextResponse.json(
-      { error: "action inválida o buttonId fuera del rango 1-255" },
+      { error: "Acción inválida o buttonId fuera del rango 1-255" },
       { status: 400 }
     )
   }
 
-  const conflicts = await sql<BindingRow[]>`
-    SELECT action, button_id
-    FROM button_bindings
-    WHERE button_id = ${buttonId} AND action <> ${action}
-  `
-  if (conflicts.length > 0) {
+  try {
+    await ensureButtonBindings()
+    const conflicts = await sql<BindingRow[]>`
+      SELECT action, button_id
+      FROM button_bindings
+      WHERE button_id = ${buttonId} AND action <> ${action}
+    `
+    if (conflicts.length > 0) {
+      return NextResponse.json(
+        { error: `El botón ${buttonId} ya está asignado a ${conflicts[0].action}` },
+        { status: 409 }
+      )
+    }
+
+    await sql`
+      INSERT INTO button_bindings (action, button_id)
+      VALUES (${action}, ${buttonId})
+      ON CONFLICT (action)
+      DO UPDATE SET button_id = EXCLUDED.button_id, updated_at = now()
+    `
+
+    const rows = await sql<BindingRow[]>`
+      SELECT action, button_id
+      FROM button_bindings
+      WHERE action IN ${sql(BUTTON_ACTIONS)}
+    `
+
+    return NextResponse.json({ bindings: mergeBindings(rows) })
+  } catch (cause) {
+    console.error("PUT /api/button-bindings failed", cause)
     return NextResponse.json(
-      { error: `El botón ${buttonId} ya está asignado a ${conflicts[0].action}` },
-      { status: 409 }
+      { error: "No se pudo guardar la configuración de botones" },
+      { status: 500 }
     )
   }
-
-  await sql`
-    INSERT INTO button_bindings (action, button_id)
-    VALUES (${action}, ${buttonId})
-    ON CONFLICT (action)
-    DO UPDATE SET button_id = EXCLUDED.button_id
-  `
-
-  const rows = await sql<BindingRow[]>`
-    SELECT action, button_id
-    FROM button_bindings
-    WHERE action IN ${sql(BUTTON_ACTIONS)}
-  `
-  const bindings = { ...DEFAULT_BUTTON_BINDINGS }
-  for (const row of rows) {
-    bindings[row.action] = row.button_id
-  }
-
-  return NextResponse.json({ bindings })
 }
