@@ -62,9 +62,10 @@ function handleSerialMessage(line) {
 
   console.log("[SERIAL RX]", msg);
 
-  const match = msg.match(/^BOTON\s+([1-9])$/i);
+  const match = msg.match(/^BOTON\s+(\d+)$/i);
 
   if (!match) {
+    console.warn(`[SERIAL] Mensaje ignorado: ${JSON.stringify(msg)}`);
     return;
   }
 
