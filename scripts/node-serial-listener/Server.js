@@ -6,11 +6,13 @@ const http = require("http");
 const SERIAL_PATH =
   "/dev/serial/by-id/usb-Arduino_LLC_Arduino_Leonardo-if00";
 
+//const SERIAL_PATH =  "COM3";
+
 const SERIAL_BAUD = 9600;
 const SOCKET_PORT = 3001;
 
-// El botón se libera recién cuando pasan 500 ms sin recibir repeticiones.
-const BUTTON_RELEASE_MS = 500;
+// El botón se libera cuando pasan 250 ms sin recibir repeticiones.
+const BUTTON_RELEASE_MS = 250;
 
 const buttonLocks = new Map();
 
@@ -60,7 +62,7 @@ function handleSerialMessage(line) {
 
   console.log("[SERIAL RX]", msg);
 
-  const match = msg.match(/^BOTON\s+(\d{1,3})$/i);
+  const match = msg.match(/^BOTON\s+([1-9])$/i);
 
   if (!match) {
     return;
@@ -68,8 +70,8 @@ function handleSerialMessage(line) {
 
   const buttonId = Number(match[1]);
 
-  // El protocolo del transmisor usa un byte. Cualquier otro valor se descarta.
-  if (!Number.isInteger(buttonId) || buttonId < 1 || buttonId > 255) {
+  // Solo se aceptan IDs de botón del 1 al 9.
+  if (!Number.isInteger(buttonId) || buttonId < 1 || buttonId > 9) {
     console.warn(`[SERIAL] ID fuera de rango ignorado: ${match[1]}`);
     return;
   }
