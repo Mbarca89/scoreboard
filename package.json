@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "fixture:open": "node scripts/build-tournament/build-open-category-fixture.mjs axl-2026-fecha-2",
+    "fixture:regenerate-d4d5": "node scripts/build-tournament/regenerate-d4d5-fixture.mjs axl-2026-fecha-2",
     "start": "next start",
     "lint": "eslint ."
   },

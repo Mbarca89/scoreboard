@@ -308,68 +308,31 @@ function buildRegularMatchesForCategory(teams, category) {
     }
 
     // ---------- N >= 6 ----------
+    // Grafo circulante 4-regular: cada equipo juega contra los vecinos a
+    // distancia 1 y 2. Produce exactamente 4 rivales distintos por equipo.
+    const orderedIds = shuffle(ids);
     const matchups = [];
-    const playedCount = new Map(ids.map(id => [id, 0]));
-    const pairCount = new Map();
+    const seenPairs = new Set();
 
-    const pairKey = (a, b) => a < b ? `${a}_${b}` : `${b}_${a}`;
-
-    let attempts = 0;
-    const maxAttempts = 5000;
-
-    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-        attempts++;
-
-        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-        if (needers.length < 2) break;
-
-        const a = needers[crypto.randomInt(0, needers.length)];
-
-        let b;
-        let tries = 0;
-
-        while (tries < 20) {
-            b = needers[crypto.randomInt(0, needers.length)];
-            if (b !== a) break;
-            tries++;
+    for (let i = 0; i < n; i++) {
+        for (const offset of [1, 2]) {
+            const a = orderedIds[i];
+            const b = orderedIds[(i + offset) % n];
+            const key = pairKey(a, b);
+            if (seenPairs.has(key)) continue;
+            seenPairs.add(key);
+            matchups.push([a, b]);
         }
-
-        if (!b || b === a) continue;
-
-        const pk = pairKey(a, b);
-        const pc = pairCount.get(pk) || 0;
-
-        if (pc > 0) continue;
-
-        if (playedCount.get(a) >= 4) continue;
-        if (playedCount.get(b) >= 4) continue;
-
-        matchups.push([a, b]);
-
-        playedCount.set(a, playedCount.get(a) + 1);
-        playedCount.set(b, playedCount.get(b) + 1);
-
-        pairCount.set(pk, pc + 1);
     }
 
-    // fallback si faltan
-    attempts = 0;
-    while (matchups.length < targetTotalMatches && attempts < maxAttempts) {
-        attempts++;
-
-        const needers = ids.filter(id => (playedCount.get(id) || 0) < 4);
-        if (needers.length < 2) break;
-
-        const a = needers[crypto.randomInt(0, needers.length)];
-        const b = needers.filter(x => x !== a)[crypto.randomInt(0, needers.length - 1)];
-
-        matchups.push([a, b]);
-
-        playedCount.set(a, playedCount.get(a) + 1);
-        playedCount.set(b, playedCount.get(b) + 1);
+    if (matchups.length !== targetTotalMatches) {
+        throw new Error(
+            `No se pudo generar fixture sin cruces repetidos para ${category}: ` +
+            `${matchups.length}/${targetTotalMatches} partidos`
+        );
     }
 
-    return matchups;
+    return shuffle(matchups);
 }
 
 function assignDays(matchups, teamsById) {
