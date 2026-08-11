@@ -3,10 +3,10 @@ const { ReadlineParser } = require("@serialport/parser-readline");
 const { Server } = require("socket.io");
 const http = require("http");
 
-const SERIAL_PATH =
+//const SERIAL_PATH =
   "/dev/serial/by-id/usb-Arduino_LLC_Arduino_Leonardo-if00";
 
-//const SERIAL_PATH =  "COM3";
+const SERIAL_PATH =  "COM3";
 
 const SERIAL_BAUD = 9600;
 const SOCKET_PORT = 3001;

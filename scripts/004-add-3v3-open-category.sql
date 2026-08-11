@@ -1,0 +1,4 @@
+DO $$
+BEGIN
+  ALTER TYPE axl_category ADD VALUE IF NOT EXISTS '3v3 Open';
+END$$;

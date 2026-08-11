@@ -36,7 +36,7 @@ const EMPTY_TEST_STATE: TestState = {
 
 export default function ButtonTestPage() {
   const { playWav } = useAudio()
-  const { bindings, loading, error: loadError, pair, reload } = useButtonBindings()
+  const { bindings, loading, error: loadError, pair, reload, resolveAction } = useButtonBindings()
   const [socketConnected, setSocketConnected] = useState(false)
   const [socketError, setSocketError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -120,7 +120,7 @@ export default function ButtonTestPage() {
         setSocketError(cause instanceof Error ? cause.message : "Error de conexión")
       })
 
-      const onButtonEvent = (payload: unknown) => {
+      const onButtonEvent = async (payload: unknown) => {
         if (!payload || typeof payload !== "object") return
         const buttonId = (payload as { buttonId?: unknown }).buttonId
         if (typeof buttonId !== "number") return
@@ -138,8 +138,7 @@ export default function ButtonTestPage() {
           return
         }
 
-        if (loading) return
-        const action = actionForButtonId(bindings, buttonId)
+        const action = await resolveAction(buttonId)
         if (action) activateTest(action)
       }
 
@@ -161,7 +160,7 @@ export default function ButtonTestPage() {
       isMounted = false
       socket?.disconnect()
     }
-  }, [activateTest, bindings, loading])
+  }, [activateTest, resolveAction])
 
   const sideClass = (action: ButtonAction) =>
     testState[action] ? "text-emerald-400 scale-110" : "text-muted-foreground"

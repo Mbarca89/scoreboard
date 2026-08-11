@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAudio } from "@/hooks/use-audio"
 import { useButtonBindings } from "@/hooks/use-button-bindings"
-import { actionForButtonId } from "@/lib/button-bindings"
 
 type TrainingMode = "IDLE" | "READY_COUNTDOWN" | "GAME"
 
@@ -50,7 +49,7 @@ function TrainingView() {
   const [socketConnected, setSocketConnected] = useState(false)
   const [socketError, setSocketError] = useState<string | null>(null)
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
-  const { bindings: buttonBindings, loading: buttonBindingsLoading } = useButtonBindings()
+  const { bindings: buttonBindings, resolveAction } = useButtonBindings()
 
   const audioOnceRef = useRef<Set<string>>(new Set())
   const emitOnce = useCallback((key: string, fn: () => void) => {
@@ -196,7 +195,7 @@ function TrainingView() {
         setSocketError(message)
       }
 
-      const onButtonEvent = (payload: unknown) => {
+      const onButtonEvent = async (payload: unknown) => {
         if (!payload || typeof payload !== "object") return
 
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
@@ -204,9 +203,7 @@ function TrainingView() {
 
         setLastButtonId(maybeButtonId)
 
-        if (buttonBindingsLoading) return
-
-        const action = actionForButtonId(buttonBindings, maybeButtonId)
+        const action = await resolveAction(maybeButtonId)
         if (action === "BASE_LEFT") onBaseButton("left")
         if (action === "PIT_LEFT") onPitButton()
         if (action === "BASE_RIGHT") onBaseButton("right")
@@ -234,7 +231,7 @@ function TrainingView() {
       isMounted = false
       if (socket) socket.disconnect()
     }
-  }, [buttonBindings, buttonBindingsLoading, onBaseButton, onPitButton])
+  }, [onBaseButton, onPitButton, resolveAction])
 
   return (
     <div className="flex min-h-screen flex-col gap-4 bg-background p-6">

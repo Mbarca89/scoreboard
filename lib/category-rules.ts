@@ -30,6 +30,13 @@ export const CATEGORY_RULES: Record<AXLCategory, CategoryRule> = {
     breakTimeSec: 61,
     singleMatchBreakTimeSec: 2 * 60,
   },
+  "3v3 Open": {
+    maxPoints: 3,
+    winCondition: "race",
+    gameTimeSec: 5 * 60,
+    breakTimeSec: 61,
+    singleMatchBreakTimeSec: 2 * 60,
+  },
 }
 
 export function getRulesForCategory(category: AXLCategory): CategoryRule {

@@ -7,7 +7,6 @@ import { DecisionPanel } from "@/components/control/decision-panel"
 import { BlockSelector } from "@/components/control/block-selector"
 import { DynamoSyncButton } from "@/components/control/dynamo-sync-button"
 import { useButtonBindings } from "@/hooks/use-button-bindings"
-import { actionForButtonId } from "@/lib/button-bindings"
 import { useSearchParams } from "next/navigation"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 
@@ -64,11 +63,21 @@ function ControlBoard() {
   const [lastButtonId, setLastButtonId] = useState<number | null>(null)
   const [socketError, setSocketError] = useState<string | null>(null)
   const lastSocketEventRef = useRef<{ buttonId: number; ts: number } | null>(null)
-  const { bindings: buttonBindings, loading: buttonBindingsLoading } = useButtonBindings()
+  const scoringInputLockedRef = useRef(false)
+  const { resolveAction } = useButtonBindings()
 
   const hasPendingDecision = state.pendingDecision !== null
   const isFromStop = state.pendingDecision?.fromStop ?? false
   const isPaused = activeMatch?.timerMode === "PAUSED"
+
+  // A base/concede press closes the current scoring window immediately. This
+  // ref changes synchronously, so repeated radio packets cannot slip through
+  // while React is still rendering the resulting PAUSED/BREAK state.
+  useEffect(() => {
+    if (activeMatch?.timerMode === "GAME" && !hasPendingDecision) {
+      scoringInputLockedRef.current = false
+    }
+  }, [activeMatch?.matchId, activeMatch?.timerMode, hasPendingDecision])
 
   // Resolve physical sides: when sidesSwapped, leftTeam is on the right and vice versa
   const swapped = activeMatch?.sidesSwapped ?? false
@@ -153,7 +162,7 @@ function ControlBoard() {
         setSocketError(message)
       }
 
-      const onButtonEvent = (payload: unknown) => {
+      const onButtonEvent = async (payload: unknown) => {
         if (!payload || typeof payload !== "object") return
 
         const maybeButtonId = (payload as { buttonId?: unknown }).buttonId
@@ -167,9 +176,18 @@ function ControlBoard() {
 
         setLastButtonId(maybeButtonId)
 
-        if (buttonBindingsLoading) return
+        const action = await resolveAction(maybeButtonId)
+        const isScoringAction =
+          action === "BASE_LEFT" ||
+          action === "BASE_RIGHT" ||
+          ((action === "PIT_LEFT" || action === "PIT_RIGHT") && activeMatch?.timerMode === "GAME")
 
-        switch (actionForButtonId(buttonBindings, maybeButtonId)) {
+        if (isScoringAction) {
+          if (scoringInputLockedRef.current) return
+          scoringInputLockedRef.current = true
+        }
+
+        switch (action) {
           case "BASE_LEFT":
             handleBaseSideButton("left")
             break
@@ -210,7 +228,7 @@ function ControlBoard() {
         socket.disconnect()
       }
     }
-  }, [buttonBindings, buttonBindingsLoading, handleBaseSideButton, handlePitSideButton])
+  }, [activeMatch?.timerMode, handleBaseSideButton, handlePitSideButton, resolveAction])
 
   return (
     <div className="flex min-h-screen flex-col gap-3 bg-background p-3">

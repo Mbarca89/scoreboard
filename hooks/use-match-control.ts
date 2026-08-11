@@ -71,7 +71,9 @@ function resolvePostPoint(
       singleMatchMode: true,
       [otherMatchKey]: {
         ...otherMatch!,
-        breakTimerSec: getSingleMatchBreakStartSec(rules.singleMatchBreakTimeSec),
+        // Este break empezó cuando ambos partidos seguían activos. El modo de
+        // partido único aplica recién al próximo break del partido restante.
+        breakTimerSec: rules.breakTimeSec,
         timerMode: "BREAK" as TimerMode,
       },
     }
@@ -579,23 +581,23 @@ export function useMatchControl(eventId: string) {
   // Concede (3 beeps + concede.wav)
   const handleConcede = useCallback(
     (side: "left" | "right") => {
-      prime()
-      const concedeAudioKey = `ui:concede:${state.activeSlot}:${state.blockId}:${side}:${Date.now()}`
-      emitOnce(`${concedeAudioKey}:start`, () =>
-        playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
-      )
-
-      setTimeout(() => {
-        emitOnce(`${concedeAudioKey}:approved`, () =>
-          playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
-        )
-      }, 1000)
-
       setState((prev) => {
         const slot = prev.activeSlot
         const matchKey = slot === "A" ? "matchA" : "matchB"
         const match = prev[matchKey]
-        if (!match) return prev
+        if (!match || match.timerMode !== "GAME" || prev.pendingDecision) return prev
+
+        prime()
+        const concedeAudioKey = `ui:concede:${slot}:${prev.blockId}:${side}:${Date.now()}`
+        emitOnce(`${concedeAudioKey}:start`, () =>
+          playSequence({ preBeeps: BEEP_3_LONG, wav: "concede" })
+        )
+
+        setTimeout(() => {
+          emitOnce(`${concedeAudioKey}:approved`, () =>
+            playSequence({ preBeeps: BEEP_2_QUICK, wav: "point-approved" })
+          )
+        }, 1000)
 
         const scoringKey = side === "left" ? "rightTeam" : "leftTeam"
         const newScore = match[scoringKey].score + 1
@@ -630,7 +632,7 @@ export function useMatchControl(eventId: string) {
         return result
       })
     },
-    [prime, emitOnce, playSequence, saveScore, scheduleSwitchAnnouncement, state.activeSlot, state.blockId]
+    [prime, emitOnce, playSequence, saveScore, scheduleSwitchAnnouncement]
   )
 
   const approveStoppedPoint = useCallback(

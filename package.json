@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "fixture:open": "node scripts/build-tournament/build-open-category-fixture.mjs axl-2026-fecha-2",
     "start": "next start",
     "lint": "eslint ."
   },

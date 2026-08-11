@@ -24,6 +24,7 @@ if (!USERS_TABLE) throw new Error("Falta USERS_TABLE");
 if (!EVENT_TEAM_ROSTERS_TABLE) throw new Error("Falta EVENT_TEAM_ROSTERS_TABLE");
 
 const rawEventId = process.argv[2];
+const NON_SEASON_CATEGORIES = new Set(["3v3 Open"]);
 if (!rawEventId) {
   throw new Error("Uso: node close-event.mjs <eventId>");
 }
@@ -288,7 +289,8 @@ async function main() {
   // 2) Calcular y repoblar EventTeamPoints
   const approved = registrations
     .filter((r) => Number.isFinite(r.finalRank))
-    .filter((r) => r.category);
+    .filter((r) => r.category)
+    .filter((r) => !NON_SEASON_CATEGORIES.has(String(r.category).trim()));
 
   if (!approved.length) {
     throw new Error("No hay equipos con finalRank y category");

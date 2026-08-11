@@ -201,6 +201,8 @@ function normalizeRank(value) {
   return String(value || "UNRANKED").trim().toUpperCase();
 }
 
+const NON_SCORING_CATEGORIES = new Set(["3v3 Open"]);
+
 function categoryPriority(category) {
   const c = String(category || "").trim().toUpperCase();
   if (c === "5V5 D3/D4") return 1;
@@ -210,6 +212,9 @@ function categoryPriority(category) {
 }
 
 function chooseScoringParticipation(participations, currentRank) {
+  participations = participations.filter(
+    (participation) => !NON_SCORING_CATEGORIES.has(participation.category)
+  );
   if (!participations.length) return null;
   if (participations.length === 1) return participations[0];
 
@@ -295,21 +300,19 @@ async function main() {
       throw new Error(`No pude resolver teamId en roster: ${JSON.stringify(roster)}`);
     }
 
+    const category = roster.category || null;
     const teamPoint = pointsByTeamId.get(teamId);
-    if (!teamPoint) {
+    if (!teamPoint && !NON_SCORING_CATEGORIES.has(category)) {
       throw new Error(`No encontré puntos de equipo para teamId=${teamId}`);
     }
 
     const rosterName =
       roster.rosterName ||
       roster.teamNameSnapshot ||
-      teamPoint.teamName ||
+      teamPoint?.teamName ||
       null;
 
-    const category =
-      roster.category ||
-      teamPoint.category ||
-      null;
+    const participationCategory = category || teamPoint?.category || null;
 
     const members = Array.isArray(roster.members) ? roster.members : [];
 
@@ -323,7 +326,7 @@ async function main() {
         eventId,
         teamId,
         rosterName,
-        category,
+        category: participationCategory,
 
         usernameSnapshot: member.username || null,
         playerCodeSnapshot: member.playerCode || null,
@@ -334,9 +337,9 @@ async function main() {
 
         status: "PLAYED",
 
-        finalRank: teamPoint.finalRank,
-        teamPointsEarned: teamPoint.points,
-        totalTeams: teamPoint.totalTeams ?? null,
+        finalRank: teamPoint?.finalRank ?? null,
+        teamPointsEarned: teamPoint?.points ?? null,
+        totalTeams: teamPoint?.totalTeams ?? null,
 
         createdAt: now,
         updatedAt: now,
