@@ -19,8 +19,9 @@ import {
 dotenv.config({ path: ".env.local" });
 
 const { Client: PgClient } = pg;
-const EVENT_ID = process.argv[2] || "axl-2026-fecha-2";
-const CONFIRMED = process.argv.includes("--confirm");
+const cliArgs = process.argv.slice(2);
+const EVENT_ID = cliArgs.find((arg) => !arg.startsWith("--")) || "axl-2026-fecha-2";
+const CONFIRMED = cliArgs.includes("--confirm");
 const CATEGORY = "3v3 D4/D5";
 const PG_URL = process.env.PG_URL || process.env.DATABASE_URL;
 const REGION = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "sa-east-1";
