@@ -1,5 +1,7 @@
 "use client"
 
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
+
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { BlockList } from "@/components/fixture/block-list"
@@ -7,7 +9,7 @@ import { Button } from "@/components/ui/button"
 
 function FixtureView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
+  const eventId = searchParams.get("eventId") ?? DEFAULT_EVENT_ID
 
   return (
     <div className="fixture-print-area min-h-screen bg-background p-4 print:bg-white print:p-3">

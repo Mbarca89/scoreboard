@@ -34,7 +34,7 @@ export function isButtonAction(value: unknown): value is ButtonAction {
 }
 
 export function isValidButtonId(value: unknown): value is number {
-  return Number.isInteger(value) && Number(value) >= 1 && Number(value) <= 255
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0
 }
 
 export function actionForButtonId(

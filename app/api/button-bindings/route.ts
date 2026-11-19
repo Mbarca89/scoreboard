@@ -10,14 +10,16 @@ import {
 
 type BindingRow = {
   action: keyof ButtonBindings
-  button_id: number
+  button_id: number | string
 }
 
 function mergeBindings(rows: BindingRow[]): ButtonBindings {
   const bindings = { ...EMPTY_BUTTON_BINDINGS }
   for (const row of rows) {
-    if (isButtonAction(row.action) && isValidButtonId(row.button_id)) {
-      bindings[row.action] = row.button_id
+    // PostgreSQL BIGINT values are returned as strings by the driver.
+    const buttonId = Number(row.button_id)
+    if (isButtonAction(row.action) && isValidButtonId(buttonId)) {
+      bindings[row.action] = buttonId
     }
   }
   return bindings
@@ -48,7 +50,7 @@ export async function PUT(req: NextRequest) {
 
   if (!isButtonAction(action) || !isValidButtonId(buttonId)) {
     return NextResponse.json(
-      { error: "Acción inválida o buttonId fuera del rango 1-255" },
+      { error: "Acción inválida o buttonId debe ser un entero positivo seguro" },
       { status: 400 }
     )
   }

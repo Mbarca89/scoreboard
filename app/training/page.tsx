@@ -1,5 +1,7 @@
 "use client"
 
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
+
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useAudio } from "@/hooks/use-audio"
@@ -37,7 +39,7 @@ function formatTime(seconds: number) {
 
 function TrainingView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
+  const eventId = searchParams.get("eventId") ?? DEFAULT_EVENT_ID
 
   const { prime, playWav, playBeeps, playSequence } = useAudio()
 
@@ -153,8 +155,15 @@ function TrainingView() {
       if (mode === "GAME") {
         setGameSec((prev) => {
           const next = prev - 1
+          if (next === 60) {
+            emitOnce("training:60-seconds", () =>
+              playSequence({ preBeeps: BEEP_2_QUICK, wav: "60-seconds" })
+            )
+          }
           if (next <= 0) {
-            emitOnce("training:game-time-finished", () => playWav("game-time-finished"))
+            emitOnce("training:game-time-finished", () =>
+              playSequence({ preBeeps: BEEP_3_LONG, wav: "game-time-finished" })
+            )
             resetToIdle()
             return 0
           }

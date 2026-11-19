@@ -1,6 +1,7 @@
 /* ── Enums ─────────────────────────────────────────── */
 
 export type AXLCategory = "5v5 D3/D4" | "3v3 D4/D5" | "3v3 D6" | "3v3 Open"
+export type AXLBlockCategory = AXLCategory | "Mixto"
 export type AXLSlot = "A" | "B"
 export type AXLBlockStatus = "SCHEDULED" | "IN_PROGRESS" | "DONE"
 export type AXLMatchResult = "LEFT_WIN" | "RIGHT_WIN" | "DRAW"
@@ -15,7 +16,7 @@ export interface FixtureBlock {
   event_id: string
   block_id: string
   block_order: number
-  category: AXLCategory
+  category: AXLBlockCategory
   stage: AXLEventStage
   group_id: string | null
   round_number: number | null

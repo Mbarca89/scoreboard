@@ -1,3 +1,4 @@
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
 import Link from "next/link"
 import { Monitor, Tv, List, Trophy, Dumbbell, SquarePower, Swords } from "lucide-react"
 
@@ -11,7 +12,7 @@ export default function HomePage() {
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Link
-          href="/control?eventId=axl-2026-fecha-2"
+          href={`/control?eventId=${encodeURIComponent(DEFAULT_EVENT_ID)}`}
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Monitor className="h-8 w-8 text-primary" />
@@ -22,7 +23,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/marcador?eventId=axl-2026-fecha-2"
+          href={`/marcador?eventId=${encodeURIComponent(DEFAULT_EVENT_ID)}`}
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Tv className="h-8 w-8 text-accent" />
@@ -33,7 +34,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/fixture?eventId=axl-2026-fecha-2"
+          href={`/fixture?eventId=${encodeURIComponent(DEFAULT_EVENT_ID)}`}
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <List className="h-8 w-8 text-chart-3" />
@@ -44,7 +45,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/scores?eventId=axl-2026-fecha-2"
+          href={`/scores?eventId=${encodeURIComponent(DEFAULT_EVENT_ID)}`}
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Trophy className="h-8 w-8 text-chart-2" />
@@ -55,7 +56,7 @@ export default function HomePage() {
         </Link>
 
         <Link
-          href="/training?eventId=axl-2026-fecha-2"
+          href={`/training?eventId=${encodeURIComponent(DEFAULT_EVENT_ID)}`}
           className="flex flex-col items-center gap-3 rounded-lg border border-border bg-card p-8 transition-colors hover:border-primary/50 hover:bg-card/80"
         >
           <Dumbbell className="h-8 w-8 text-emerald-400" />

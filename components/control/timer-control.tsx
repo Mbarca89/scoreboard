@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import type { MatchState } from "@/lib/types"
-import { Play, Pause, Megaphone, Pencil, Check, X, Plus, Minus, RotateCcw } from "lucide-react"
+import { Play, Pause, Megaphone, Pencil, Check, X, Plus, Minus, RotateCcw, Flag } from "lucide-react"
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -20,6 +20,7 @@ interface TimerControlProps {
   onSetGameTimer: (seconds: number) => void
   onStartOvertime: () => void
   onReopenMatch?: () => void
+  onFinishMatch?: () => void
   onCampoActivo: () => void
   hasPendingDecision: boolean
 }
@@ -33,6 +34,7 @@ export function TimerControl({
   onSetGameTimer,
   onStartOvertime,
   onReopenMatch,
+  onFinishMatch,
   onCampoActivo,
   hasPendingDecision,
 }: TimerControlProps) {
@@ -276,6 +278,18 @@ export function TimerControl({
         >
           <RotateCcw className="mr-2 h-4 w-4" />
           REABRIR PARTIDO
+        </Button>
+      )}
+
+      {!match.isFinished && onFinishMatch && (
+        <Button
+          variant="outline"
+          className="h-12 w-full border-destructive text-sm font-bold text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={onFinishMatch}
+          disabled={hasPendingDecision}
+        >
+          <Flag className="mr-2 h-4 w-4" />
+          CERRAR PARTIDO
         </Button>
       )}
 

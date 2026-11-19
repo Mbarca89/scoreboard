@@ -1,5 +1,7 @@
 "use client"
 
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
+
 import { useMatchControl } from "@/hooks/use-match-control"
 import { TeamPanel } from "@/components/control/team-panel"
 import { TimerControl } from "@/components/control/timer-control"
@@ -22,7 +24,7 @@ declare global {
   }
 }
 
-const EVENT_ID = "axl-2026-fecha-2"
+const EVENT_ID = DEFAULT_EVENT_ID
 const SOCKET_SCRIPT_SRC = "https://cdn.socket.io/4.7.5/socket.io.min.js"
 
 function formatTime(seconds: number): string {
@@ -56,6 +58,7 @@ function ControlBoard() {
     resumeStoppedGame,
     startOvertime,
     reopenMatch,
+    finishMatch,
     useTimeout,
   } = useMatchControl(eventId)
 
@@ -288,6 +291,7 @@ function ControlBoard() {
             onSetGameTimer={setGameTimer}
             onStartOvertime={startOvertime}
             onReopenMatch={reopenMatch}
+            onFinishMatch={finishMatch}
             onCampoActivo={() => {}}
             hasPendingDecision={hasPendingDecision}
           />

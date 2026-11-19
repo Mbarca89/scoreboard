@@ -1,12 +1,14 @@
 "use client"
 
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
+
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { ObsScorebar } from "@/components/marcador/obs-scorebar"
 
 function OverlayView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
+  const eventId = searchParams.get("eventId") ?? DEFAULT_EVENT_ID
 
   return <ObsScorebar eventId={eventId} />
 }

@@ -338,6 +338,12 @@ export function useMatchControl(eventId: string) {
         if (match.timerMode === "GAME" && match.gameTimerSec > 0) {
           const newGame = match.gameTimerSec - 1
 
+          if (newGame === 60) {
+            emitOnce(`game:${match.matchId}:ann:60`, () =>
+              playSequence({ preBeeps: BEEP_2_QUICK, wav: "60-seconds" })
+            )
+          }
+
           // Game timer reached zero -> finish match, except tied SEMI/FINAL (automatic overtime).
           if (newGame === 0) {
             const isTie = match.leftTeam.score === match.rightTeam.score
@@ -797,6 +803,9 @@ export function useMatchControl(eventId: string) {
       const match = prev[matchKey]
       if (!match) return prev
 
+      // Persist elapsed game time even though neither team scored.
+      saveScore(match.matchId, match.leftTeam.score, match.rightTeam.score, match.gameTimerSec, false)
+
       const otherSlot: AXLSlot = slot === "A" ? "B" : "A"
       const otherMatchKey = otherSlot === "A" ? "matchA" : "matchB"
       const otherMatch = prev[otherMatchKey]
@@ -823,7 +832,7 @@ export function useMatchControl(eventId: string) {
         [otherMatchKey]: { ...otherMatch!, breakTimerSec: rules.breakTimeSec, timerMode: "BREAK" as TimerMode },
       }
     })
-  }, [prime, emitOnce, playSequence, state.activeSlot, state.blockId])
+  }, [prime, emitOnce, playSequence, saveScore, state.activeSlot, state.blockId])
 
   // Reanudar desde una detención manual (sin cerrar la jugada).
   const resumeStoppedGame = useCallback(() => {
@@ -902,6 +911,44 @@ export function useMatchControl(eventId: string) {
       }
     })
   }, [saveScore])
+
+  const finishMatch = useCallback(() => {
+    setState((prev) => {
+      if (prev.pendingDecision) return prev
+
+      const matchKey = prev.activeSlot === "A" ? "matchA" : "matchB"
+      const match = prev[matchKey]
+      if (!match || match.isFinished) return prev
+
+      const leftScore = match.leftTeam.score
+      const rightScore = match.rightTeam.score
+      const resultType =
+        leftScore > rightScore
+          ? "LEFT_WIN"
+          : rightScore > leftScore
+            ? "RIGHT_WIN"
+            : "DRAW"
+      const winnerTeamId =
+        leftScore > rightScore
+          ? match.leftTeam.id
+          : rightScore > leftScore
+            ? match.rightTeam.id
+            : undefined
+
+      const updatedMatch: MatchState = {
+        ...match,
+        gameTimerSec: 0,
+        timerMode: "IDLE" as TimerMode,
+        isFinished: true,
+      }
+
+      saveScore(match.matchId, leftScore, rightScore, 0, true, resultType, winnerTeamId)
+
+      const result = resolvePostPoint(prev, matchKey, updatedMatch, true)
+      syncLiveState(result)
+      return result
+    })
+  }, [resolvePostPoint, saveScore, syncLiveState])
 
   // Timeout (2 beeps + timeout.wav) y suma 60s al break
   const useTimeout = useCallback(
@@ -988,6 +1035,7 @@ export function useMatchControl(eventId: string) {
     resumeStoppedGame,
     startOvertime,
     reopenMatch,
+    finishMatch,
     useTimeout,
   }
 }

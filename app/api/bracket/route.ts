@@ -5,6 +5,7 @@ import type { AXLCategory } from "@/lib/types"
 type Stage = "SEMI" | "FINAL"
 
 interface MatchInput {
+  category: AXLCategory
   leftTeamId: string
   leftTeamName: string
   leftTeamLogoKey?: string | null
@@ -16,16 +17,20 @@ interface MatchInput {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { eventId, category, stage, matches } = body as {
+  const { eventId, stage, matches } = body as {
     eventId: string
-    category: AXLCategory
     stage: Stage
     matches: MatchInput[]
   }
 
-  if (!eventId || !category || !stage || !Array.isArray(matches) || matches.length < 1 || matches.length > 2) {
-    return NextResponse.json({ error: "eventId, category, stage and 1 or 2 matches are required" }, { status: 400 })
+  if (!eventId || !stage || !Array.isArray(matches) || matches.length < 1 || matches.length > 2) {
+    return NextResponse.json({ error: "eventId, stage and 1 or 2 matches are required" }, { status: 400 })
   }
+
+  const validCategories: AXLCategory[] = ["5v5 D3/D4", "3v3 D4/D5", "3v3 D6", "3v3 Open"]
+  const blockCategory = matches.every((item) => item.category === matches[0]?.category)
+    ? matches[0].category
+    : "Mixto"
 
   const blockId = `block_${crypto.randomUUID()}`
   const matchAId = `match_${crypto.randomUUID()}`
@@ -39,6 +44,9 @@ export async function POST(req: NextRequest) {
   for (let i = 0; i < matches.length; i++) {
     const item = matches[i]
     const isBye = item.isBye === true
+    if (!validCategories.includes(item.category)) {
+      return NextResponse.json({ error: `Match ${i + 1}: invalid category` }, { status: 400 })
+    }
     if (!item.leftTeamId || !item.leftTeamName) {
       return NextResponse.json({ error: `Match ${i + 1}: left team is required` }, { status: 400 })
     }
@@ -51,7 +59,7 @@ export async function POST(req: NextRequest) {
     INSERT INTO fixture_blocks (
       event_id, block_id, block_order, category, stage, group_id, round_number, status, active_slot
     ) VALUES (
-      ${eventId}, ${blockId}, ${nextOrder}, ${category}, ${stage}, null, null, 'SCHEDULED', 'A'
+      ${eventId}, ${blockId}, ${nextOrder}, ${blockCategory}, ${stage}, null, null, 'SCHEDULED', 'A'
     )
   `
 
@@ -72,7 +80,7 @@ export async function POST(req: NextRequest) {
         left_score, right_score, time_remaining_sec,
         is_finished, result_type, winner_team_id, display_label
       ) VALUES (
-        ${eventId}, ${ids[i]}, ${blockId}, ${slots[i]}, ${category}, ${stage},
+        ${eventId}, ${ids[i]}, ${blockId}, ${slots[i]}, ${item.category}, ${stage},
         ${item.leftTeamId}, ${item.leftTeamName}, ${item.leftTeamLogoKey ?? null},
         ${rightTeamId}, ${rightTeamName}, ${isBye ? null : item.rightTeamLogoKey ?? null},
         ${isBye ? 1 : 0}, 0, 0,

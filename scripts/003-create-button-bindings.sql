@@ -16,7 +16,7 @@ END$$;
 
 CREATE TABLE IF NOT EXISTS button_bindings (
   action      axl_button_action PRIMARY KEY,
-  button_id  SMALLINT NOT NULL UNIQUE CHECK (button_id BETWEEN 1 AND 255),
+  button_id  BIGINT NOT NULL UNIQUE CHECK (button_id > 0),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

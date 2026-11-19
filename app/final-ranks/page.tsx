@@ -1,12 +1,14 @@
 "use client"
 
+import { DEFAULT_EVENT_ID } from "@/lib/event-config"
+
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { FinalRanksManager } from "@/components/scores/final-ranks-manager"
 
 function FinalRanksView() {
   const searchParams = useSearchParams()
-  const eventId = searchParams.get("eventId") ?? "axl-2026-fecha-2"
+  const eventId = searchParams.get("eventId") ?? DEFAULT_EVENT_ID
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-6">
