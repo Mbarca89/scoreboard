@@ -3,8 +3,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
-dotenv.config({ path: ".env.local" });
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: [".env.local", path.join(SCRIPT_DIR, ".env.local")] });
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
@@ -17,7 +19,7 @@ const { Client: PgClient } = pg;
 // ---------- CONFIG ----------
 const EVENT_ID = process.argv[2];
 if (!EVENT_ID) {
-  console.error("Uso: node logo-backfill.mjs <eventId>");
+  console.error("Uso: node getlogos.mjs <eventId>");
   process.exit(1);
 }
 
@@ -31,9 +33,9 @@ if (!PG_URL) {
   process.exit(1);
 }
 
-const PUBLIC_DIR = path.resolve(process.cwd(), "public");
+const PUBLIC_DIR = path.resolve(SCRIPT_DIR, "../../public");
 const BASE_FS_DIR = path.join(PUBLIC_DIR, "images/team-logos/teams");
-const BASE_DB_PATH = "images/team-logos/teams";
+const BASE_DB_PATH = "/images/team-logos/teams";
 const DRY_RUN = (process.env.DRY_RUN ?? "false") === "true";
 const OVERWRITE = (process.env.OVERWRITE_EXISTING ?? "false") === "true";
 
@@ -150,8 +152,8 @@ async function main() {
 
       await pgClient.query(
         `UPDATE matches
-         SET left_team_logo_path = $1,
-             right_team_logo_path = $2
+         SET left_team_logo_path = COALESCE($1, left_team_logo_path),
+             right_team_logo_path = COALESCE($2, right_team_logo_path)
          WHERE match_id = $3`,
         [leftPath, rightPath, m.match_id]
       );
